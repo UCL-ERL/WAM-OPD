@@ -1,0 +1,9 @@
+# Install the CUDA-specific PyTorch build separately for the target machine.
+accelerate
+diffusers==0.36.0
+einops
+msgpack
+numpy
+opencv-python
+transformers==4.55.2
+websockets

@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Generated experiment configuration
+configs/generated/
+
+# Models, datasets, rollouts, checkpoints, and generated outputs
+.artifacts/
+artifacts/
+datasets/
+models/
+results/
+logs/
+runtime/
+outputs/
+checkpoints/
+videos/
+previews/
+tmp/
+scratch/
+wandb/
+swanlog/
+
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.npz
+*.npy
+*.mp4
+*.avi
+*.mov
+*.log
+*.jsonl
+*.zip
+*.tar
+*.tar.gz
+*.so
+
+# External source trees are pinned separately, not vendored
+third_party/
+external/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/

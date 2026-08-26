@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wam-opd"
+version = "0.1.0"
+description = "On-policy distillation for joint World-Action Models"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+authors = [{name = "ylhaichen"}]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<9"]
+runtime = [
+  "accelerate",
+  "diffusers==0.36.0",
+  "einops",
+  "msgpack",
+  "numpy",
+  "opencv-python",
+  "transformers==4.55.2",
+  "websockets",
+]
+
+[tool.setuptools.packages.find]
+include = ["experiments*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

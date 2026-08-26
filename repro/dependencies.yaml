@@ -1,0 +1,20 @@
+source_repositories:
+  wave_rl:
+    url: https://github.com/ylhaichen/wave-rl.git
+    commit: d7aeed296ef1daa98cfda0108fd3475946226971
+  lingbot_va:
+    url: https://github.com/robbyant/lingbot-va.git
+    location: wave-rl/third_party/lingbot-va
+    commit: 58c2ae5bac46bd8114065bea9d7d256eb67c16c3
+  flash_wam_reference:
+    url: https://github.com/NU-World-Model-Embodied-AI/Flash-WAM.git
+    commit: 5b8df13e9db24fb15ce42ff5ccc60a4015195960
+    note: reference implementation; not vendored by this repository
+
+validated_environment:
+  python: 3.10.16
+  pytorch: 2.9.0
+  cuda: "12.6"
+  torchvision: 0.24.0
+  diffusers: 0.36.0
+  transformers: 4.55.2
