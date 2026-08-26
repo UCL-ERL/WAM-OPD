@@ -1,1 +1,2 @@
+numpy
 pytest>=8,<9
