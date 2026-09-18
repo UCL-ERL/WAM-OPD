@@ -1563,6 +1563,29 @@ def _initialize_task_local_success_state(task_env: object, task: str) -> None:
             "{B}": f"062_plasticbox/base{task_env.plasticbox_id}",
             "{C}": f"071_can/base{task_env.object2_id}",
         }
+    elif task == "place_container_plate":
+        # Derive prompt metadata from setup state without invoking the expert.
+        arm_tag = "right" if float(task_env.container.get_pose().p[0]) > 0 else "left"
+        task_env.info["info"] = {
+            "{A}": f"003_plate/base{task_env.plate_id}",
+            "{B}": f"{task_env.actor_name}/base{task_env.container_id}",
+            "{a}": arm_tag,
+        }
+    elif task == "move_pillbottle_pad":
+        # Derive prompt metadata from setup state without invoking the expert.
+        arm_tag = "right" if float(task_env.pillbottle.get_pose().p[0]) > 0 else "left"
+        task_env.info["info"] = {
+            "{A}": f"080_pillbottle/base{task_env.pillbottle_id}",
+            "{a}": arm_tag,
+        }
+    elif task == "place_object_stand":
+        # Derive prompt metadata from setup state without invoking the expert.
+        arm_tag = "right" if float(task_env.object.get_pose().p[0]) > 0 else "left"
+        task_env.info["info"] = {
+            "{A}": f"{task_env.selected_modelname}/base{task_env.selected_model_id}",
+            "{B}": f"074_displaystand/base{task_env.displaystand_id}",
+            "{a}": arm_tag,
+        }
     else:
         raise NativeClosedLoopError(
             f"task-local success metadata is not explicitly supported for {task!r}"

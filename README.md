@@ -1,63 +1,138 @@
 # WAM-OPD
 
-On-policy distillation for joint World-Action Models (WAMs), using a
-full-step LingBot-VA Teacher to improve the released few-step Flash-WAM
-RoboTwin Student on Student-visited histories.
+On-policy distillation for joint World-Action Models (WAMs).
 
-The current method performs Student-controlled collection, coherent Teacher
-video/action labeling, rank-8 JointLoRA training over all 30 shared
-Transformer blocks, checkpoint screening, and exact-paired held-out
-evaluation. The Teacher is used for labeling/training only; deployment loads
-the Student and selected adapter.
+WAM-OPD studies how a full-step LingBot-VA Teacher can improve a released,
+few-step Flash-WAM Student on the states that the Student actually visits in
+RoboTwin. The central object is a coherent video/action Teacher target: the
+Teacher labels both modalities at the same Student history, while the Student
+adapter is trained and evaluated without changing the deployment-time model
+interface.
 
-Primary contributor: [ylhaichen](https://github.com/ylhaichen).
+<p align="center">
+  <a href="https://github.com/UCL-ERL/WAM-OPD/actions/workflows/ci.yml"><img src="https://github.com/UCL-ERL/WAM-OPD/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="QUALIFIED_SUCCESS_PATH_PIPELINE_V1.md">pipeline contract</a>
+  · <a href="docs/REPOSITORY_LAYOUT.md">repository layout</a>
+  · <a href="docs/ARTIFACT_POLICY.md">artifact policy</a>
+</p>
 
-## What is in this repository
+## Why this repository
 
-- `experiments/`: the current formal pipeline, JointLoRA implementation,
-  training/evaluation runtime, deployment prototypes, and focused tests;
-- `scripts/`: stable command-line entry points;
-- `configs/`: generated-config documentation (generated files are ignored);
-- `docs/method/`: method and protocol decisions;
-- `docs/deployment/`: real-robot deployment contract and safety gates;
-- `repro/`: external dependency versions and the curated source allowlist.
+The project focuses on a practical gap in WAM post-training:
 
-Models, checkpoints, trajectories, datasets, videos, logs, and evaluation
-outputs are intentionally not stored in Git.
+- Flash-WAM is efficient at inference but can lose closed-loop capability
+  after aggressive step distillation;
+- LingBot-VA provides a stronger full-step Teacher in the same RoboTwin model
+  family;
+- Student-controlled histories preserve the on-policy state distribution;
+- joint video/action targets let the shared Transformer receive supervision
+  from both world prediction and action prediction;
+- exact-paired evaluation keeps seeds, initial states, prompts, noise banks,
+  and task contracts fixed across model variants.
 
-## External dependencies
+The repository contains the reproducible orchestration and model-side seams.
+Large checkpoints, datasets, trajectory artifacts, logs, videos, and private
+server assets stay outside Git by design.
 
-The code expects a sibling or explicitly configured `wave-rl` checkout that
-contains LingBot-VA, RoboTwin, and the RoboTwin Python environment. The source
-versions used by the current experiments are recorded in
-`repro/dependencies.yaml`.
+## Pipeline at a glance
+
+```text
+qualified task contract
+        │
+        ▼
+Student-controlled collection ──► Teacher video/action labeling
+        │                                      │
+        └──────────── trajectory artifacts ◄──┘
+                         │
+                         ▼
+              JointLoRA / trajectory update
+                         │
+                         ▼
+                 E1/E2/E3 screening
+                         │
+                         ▼
+              selected-checkpoint receipt
+                         │
+                         ▼
+       exact-paired Released / Adapted evaluation
+```
+
+The fixed research contract is documented in
+[`QUALIFIED_SUCCESS_PATH_PIPELINE_V1.md`](QUALIFIED_SUCCESS_PATH_PIPELINE_V1.md).
+Do not change split sizes, noise policies, checkpoint selection, or evaluation
+semantics by editing a launcher ad hoc.
+
+## Repository status and source of truth
+
+The public Git repository is the portable, reviewable code surface. The
+experiments that run on the research server use a larger working snapshot with
+additional task-specific and diagnostic scripts. The synchronization boundary
+and verification procedure are documented in
+[`docs/SERVER_SOURCE_SYNC.md`](docs/SERVER_SOURCE_SYNC.md).
+
+When a public file and the server snapshot differ, do not silently assume that
+the local file is authoritative. Record the server file hash, decide whether it
+is a canonical runtime surface or an internal diagnostic, then synchronize the
+smallest compatible change. This keeps the repository reproducible without
+publishing checkpoints or server-only paths.
+
+## Project structure
+
+See [`docs/REPOSITORY_LAYOUT.md`](docs/REPOSITORY_LAYOUT.md) for ownership and
+compatibility rules. The short version is:
+
+| Path | Responsibility |
+| --- | --- |
+| `experiments/` | Stable Python entry points, model adapters, task contracts, and focused tests. Existing module paths are compatibility-sensitive. |
+| `scripts/` | Thin shell entry points and dependency bootstrap helpers. |
+| `configs/` | Schemas and documentation for generated configs; generated configs are ignored. |
+| `docs/method/` | Method decisions and protocol contracts. |
+| `docs/deployment/` | Real-robot safety and deployment gates. |
+| `repro/` | External dependency pins and source allowlists. |
+| `tests/` | Repository-level contract tests. |
+
+Files named `prototype_*`, stage diagnostics, and historical experiment
+helpers remain at their established paths when external workflows may import
+them. They are not default pipeline entry points; the navigation documents
+identify their intended status instead of deleting them speculatively.
+
+## Installation
+
+The runtime expects a sibling or explicitly configured `wave-rl` checkout that
+provides LingBot-VA, RoboTwin, and the pinned RoboTwin environment.
 
 ```bash
 git clone https://github.com/UCL-ERL/WAM-OPD.git
 cd WAM-OPD
 
-# Optional: clone the pinned wave-rl source next to this repository.
+# Optional: clone the pinned external source next to this repository.
 ./scripts/bootstrap_dependencies.sh
 
 cp .env.example .env
-# Edit .env for the local model, dataset, artifact, and Python locations.
+# Set WAVE_RL_ROOT, WAM_OPD_PYTHON_BIN, model roots, and artifact roots.
 set -a
 source .env
 set +a
 ```
 
-The large model/data inputs must be transferred separately. Required inputs
-for the full formal pipeline are:
+The full pipeline needs these external inputs:
 
 1. released `FlashWAM-RoboTwin` Student;
-2. `lingbot-va-posttrain-robotwin` Teacher Transformer;
-3. RoboTwin native source/assets through `wave-rl`;
+2. the official `lingbot-va-posttrain-robotwin` Teacher Transformer;
+3. RoboTwin native source and assets through `wave-rl`;
 4. a qualified task decision and outcome-free episode metadata;
 5. writable artifact and scratch roots outside this repository.
 
-## Lightweight verification
+## Verify the repository
 
-The repository-level orchestration tests do not load models or require GPUs:
+These checks do not load models or require GPUs:
+
+```bash
+make compile
+make test
+```
+
+Equivalent commands are:
 
 ```bash
 python3 -m compileall -q experiments tests
@@ -68,20 +143,16 @@ python3 -m pytest -q \
   experiments/test_stage_h_task_progress.py
 ```
 
-For model/runtime tests, activate the pinned RoboTwin/LingBot environment and
-run:
+Runtime tests require the pinned RoboTwin/LingBot environment:
 
 ```bash
-python3 -m pytest -q experiments/test_joint_lora.py \
-  experiments/test_joint_lora_fp32.py \
-  experiments/test_waopd_native_closed_loop_runner.py
+make test-runtime
 ```
 
-## Generate and run a formal pipeline
+## Run the qualified pipeline
 
-Generated configs go to `configs/generated/` and remain untracked. The scaled
-binder preserves the fixed scientific recipe while allowing a larger
-train/calibration cohort.
+Generate a task manifest with the binder. Generated configs belong under
+`configs/generated/` and are intentionally untracked.
 
 ```bash
 python3 -m experiments.bind_scaled_qualified_success_path_task \
@@ -106,28 +177,40 @@ python3 -m experiments.bind_scaled_qualified_success_path_task \
   configs/generated/<task>_scaled_qualified_pipeline_v1_<date>.json run
 ```
 
-The fixed formal stages are:
+The controller is fail-closed: it derives state from stage receipts, refuses
+partial or ambiguous output, and never deletes or overwrites an existing
+artifact root.
 
-```text
-qualification PASS
-→ Student-controlled collection / Teacher labeling
-→ exactly 3 JointLoRA epochs
-→ E1/E2/E3 screening
-→ checkpoint selection
-→ exact-paired Released/Adapted held-out evaluation
+## Evaluation and artifacts
+
+Formal evaluation uses exact-paired Released/Adapted units. Keep the following
+outside the repository and bind them from a manifest:
+
+- model and adapter checkpoints;
+- trajectory and Teacher-label artifacts;
+- frozen formal/extension protocols and noise banks;
+- per-unit episode outputs and videos;
+- logs, summaries, and recovery receipts.
+
+See [`docs/ARTIFACT_POLICY.md`](docs/ARTIFACT_POLICY.md) before moving an
+artifact or reusing an output root.
+
+The stable task-generic module name is:
+
+```bash
+python3 -m experiments.run_paired_multinoise --help
 ```
 
-Read `QUALIFIED_SUCCESS_PATH_PIPELINE_V1.md` before changing any split,
-selection, epoch, seed, or evaluation contract.
+It delegates to the existing paired evaluator and does not introduce a second
+evaluation implementation.
 
-## Real-robot deployment
+## Real-robot safety
 
-Start with `docs/deployment/REAL_ROBOT_DEPLOYMENT.md`. The repository includes
-model-server and offline observation prototypes, but it does not yet contain a
-verified production robot SDK adapter, calibration layer, collision
-supervisor, watchdog, or E-stop integration.
-
-Do not connect policy output directly to actuators. Required progression is:
+Start with [`docs/deployment/REAL_ROBOT_DEPLOYMENT.md`](docs/deployment/REAL_ROBOT_DEPLOYMENT.md).
+This repository does not contain a verified production robot SDK adapter,
+calibration layer, collision supervisor, watchdog, or E-stop integration.
+Simulation success is not evidence of hardware safety. The required progression
+is:
 
 ```text
 offline two-chunk parity
@@ -137,4 +220,21 @@ offline two-chunk parity
 → guarded closed-loop trials
 ```
 
-Simulation tests are not evidence of hardware safety.
+## Contributing
+
+Use the existing module paths and contracts unless a migration is explicitly
+planned. Before a structural change:
+
+1. read the relevant method and deployment contract;
+2. run the baseline `make test` checks;
+3. make the smallest compatible change;
+4. run focused tests, then the repository checks;
+5. document any server-source synchronization or artifact-format change.
+
+The current contributor list is in [`CONTRIBUTORS.md`](CONTRIBUTORS.md).
+
+## Citation and license
+
+The citation entry and license will be finalized with the author and release
+policy. Until then, the repository should be treated as research code whose
+external model, dataset, and simulator licenses remain applicable.

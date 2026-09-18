@@ -1,11 +1,14 @@
 PYTHON ?= python3
 
-.PHONY: compile test test-runtime
+.PHONY: compile hygiene test test-runtime
 
 compile:
 	$(PYTHON) -m compileall -q experiments tests
 
-test: compile
+hygiene:
+	$(PYTHON) scripts/check_repository_hygiene.py
+
+test: compile hygiene
 	$(PYTHON) -m pytest -q \
 		tests/test_opd_task_specs.py \
 		experiments/test_qualified_success_path_pipeline.py \
