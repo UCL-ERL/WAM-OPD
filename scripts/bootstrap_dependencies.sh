@@ -21,10 +21,10 @@ clone_pinned() {
   local attempt
   for attempt in 1 2 3; do
     rm -rf "$target"
-    if GIT_TERMINAL_PROMPT=0 git -c http.version=HTTP/1.1 clone --filter=blob:none --no-checkout "$url" "$target" \
-      && git -C "$target" fetch --depth=1 origin "$commit" \
-      && git -C "$target" checkout --detach "$commit" \
-      && git -C "$target" submodule update --init --recursive; then
+    if GIT_TERMINAL_PROMPT=0 GIT_LFS_SKIP_SMUDGE=1 git -c http.version=HTTP/1.1 clone --filter=blob:none --no-checkout "$url" "$target" \
+      && GIT_LFS_SKIP_SMUDGE=1 git -C "$target" fetch --depth=1 origin "$commit" \
+      && GIT_LFS_SKIP_SMUDGE=1 git -C "$target" checkout --detach "$commit" \
+      && GIT_LFS_SKIP_SMUDGE=1 git -C "$target" submodule update --init --recursive; then
       return 0
     fi
     echo "source fetch failed (attempt $attempt/3): $url" >&2
