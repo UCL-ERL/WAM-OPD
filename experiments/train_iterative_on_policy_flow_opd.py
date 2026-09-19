@@ -35,6 +35,7 @@ from experiments.opd_task_specs import (
     require_training_task_config,
     resolve_task_chunks,
 )
+from experiments.success_path_distributed import SuccessPathDistributedContext
 from experiments.train_joint_teacher_trajectory_opd import (
     _outcome,
     _setup_task_with_locked_prompt,
@@ -3347,6 +3348,11 @@ def _update_round_success_path_tt(
     ]
     | None = None,
     success_path_resume_state: Mapping[str, Any] | None = None,
+    distributed_context: SuccessPathDistributedContext | None = None,
+    optimizer_step_callback: Callable[
+        [int, torch.optim.Optimizer, Mapping[str, torch.Tensor]], None
+    ]
+    | None = None,
 ) -> dict[str, Any]:
     """Train z_S and a_S(h_S, stopgrad(z_S)) against coherent direct targets."""
 
@@ -3370,6 +3376,12 @@ def _update_round_success_path_tt(
         and int(max_train_labels_per_trajectory) <= 0
     ):
         raise ValueError("max_train_labels_per_trajectory must be positive")
+
+    distributed = distributed_context or SuccessPathDistributedContext()
+    if distributed.world_size > 1 and epoch_checkpoint_callback is not None:
+        raise ValueError(
+            "distributed success-path pilot forbids epoch checkpoint callbacks"
+        )
 
     completed_inner_epochs = 0
     resume_progress: Mapping[str, Any] | None = None
@@ -3571,9 +3583,10 @@ def _update_round_success_path_tt(
             optimizer.zero_grad(set_to_none=True)
             batch_totals = {"video": 0.0, "action": 0.0, "action_fm": 0.0}
             batch_weight = 0.0
-            for (trajectory, label), sample_scale in zip(
-                batch, sample_scales, strict=True
-            ):
+            local_sample_rows: list[tuple[int, dict[str, Any]]] = []
+            for sample_index in distributed.local_indices(len(batch)):
+                trajectory, label = batch[sample_index]
+                sample_scale = sample_scales[sample_index]
                 context = materialize_context(trajectory, label)
                 target_plan = label["teacher_z_t"].to(
                     device=runtime.device, dtype=runtime.dtype
@@ -3627,13 +3640,12 @@ def _update_round_success_path_tt(
                     "action_fm": float(action_fm_loss.detach().item()),
                 }
                 for key, value in values.items():
-                    weighted = value * float(sample_scale)
-                    totals[key] += weighted
-                    epoch_totals[key] += weighted
-                    batch_totals[key] += weighted
+                    batch_totals[key] += value * float(sample_scale)
                 batch_weight += float(sample_scale)
-                sample_rows.append(
-                    {
+                local_sample_rows.append(
+                    (
+                        int(sample_index),
+                        {
                         "epoch": int(epoch_id),
                         "step_id": int(step_id),
                         "task": str(trajectory["task"]),
@@ -3645,7 +3657,8 @@ def _update_round_success_path_tt(
                         "action_fm_loss": values["action_fm"],
                         "optimization_weight": float(sample_scale),
                         "action_condition": "student_z_s_detached",
-                    }
+                        },
+                    )
                 )
                 del (
                     forward,
@@ -3656,6 +3669,24 @@ def _update_round_success_path_tt(
                 )
 
             parameters = list(live_state.values())
+            distributed.sum_gradients(parameters)
+            reduced = distributed.sum_scalars(
+                [
+                    batch_totals["video"],
+                    batch_totals["action"],
+                    batch_totals["action_fm"],
+                    batch_weight,
+                ],
+                device=runtime.device,
+            )
+            batch_totals = dict(zip(
+                ("video", "action", "action_fm"), reduced[:3], strict=True
+            ))
+            batch_weight = float(reduced[3])
+            sample_rows.extend(distributed.gather_indexed_rows(local_sample_rows))
+            for key in ("video", "action", "action_fm"):
+                totals[key] += batch_totals[key]
+                epoch_totals[key] += batch_totals[key]
             gradient_norm = torch.nn.utils.clip_grad_norm_(
                 parameters, max_norm=float(max_grad_norm)
             )
@@ -3667,6 +3698,8 @@ def _update_round_success_path_tt(
                     "nonfinite or zero success_path_v1 gradient"
                 )
             optimizer.step()
+            if optimizer_step_callback is not None:
+                optimizer_step_callback(int(step_id), optimizer, live_state)
             if not all(
                 bool(torch.isfinite(value).all().item()) for value in parameters
             ):
