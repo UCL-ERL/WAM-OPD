@@ -2,9 +2,9 @@
 
 On-policy distillation for joint World-Action Models (WAMs).
 
-> Release status: CPU verification is available; fresh-machine GPU experiment
-> reproduction is **not yet certified**. Read the known dependency and source
-> gaps in [Reproducibility](docs/REPRODUCIBILITY.md) before starting a run.
+> Release candidate: CPU verification and one isolated server GPU smoke test
+> are passing. Full fresh-machine benchmark reproduction is **not yet
+> certified**. Read [Reproducibility](docs/REPRODUCIBILITY.md) before a run.
 
 WAM-OPD studies how a full-step LingBot-VA Teacher can improve a released,
 few-step Flash-WAM Student on the states that the Student actually visits in
@@ -116,6 +116,9 @@ python3.11 -m venv .venv
 source .venv/bin/activate
 python -m pip install '.[dev]'
 make test
+
+# Environment and source-tree check (does not load model weights).
+wam-opd doctor
 ```
 
 For GPU experiments, prepare a WAM-OPD environment with CUDA, LingBot-VA and
@@ -170,6 +173,9 @@ Runtime tests require the pinned RoboTwin/LingBot environment:
 
 ```bash
 make test-runtime
+
+# On a prepared GPU host:
+wam-opd doctor --require-gpu --require-models
 ```
 
 ## Run the qualified pipeline

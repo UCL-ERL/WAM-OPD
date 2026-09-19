@@ -1,7 +1,7 @@
 # RoboTwin task / protocol map for the next OPD vertical slice
 
 Date: 2026-08-16
-Scope: read-only inspection of `<WAM_OPD_ROOT>` and `<WAVE_RL_ROOT>` on `<A800_HOST>`. No process was started and no remote file was changed.
+Scope: read-only inspection of `<WAM_OPD_ROOT>` and `<RUNTIME_ROOT>` on `<A800_HOST>`. No process was started and no remote file was changed.
 
 ## Summary
 
@@ -27,9 +27,9 @@ Scope: read-only inspection of `<WAM_OPD_ROOT>` and `<WAVE_RL_ROOT>` on `<A800_H
 
 The repository itself maps the identifiers explicitly:
 
-- `<WAVE_RL_ROOT>/scripts/sweep/print_robotwin_sweep_results.py:169-178` maps `demo_clean` to `easy` and `demo_randomized` to `hard`.
+- `<RUNTIME_ROOT>/scripts/sweep/print_robotwin_sweep_results.py:169-178` maps `demo_clean` to `easy` and `demo_randomized` to `hard`.
 - The same file states the names directly at `:223-226`: `demo_clean = RobotWin Easy`, `demo_randomized = RobotWin Hard`.
-- `<WAVE_RL_ROOT>/third_party/RoboTwin-lingbot-native/task_config/` contains only `demo_clean.yml` and `demo_randomized.yml` as user-facing split configs; there is no `easy.yml` or `hard.yml`.
+- `<RUNTIME_ROOT>/third_party/RoboTwin-lingbot-native/task_config/` contains only `demo_clean.yml` and `demo_randomized.yml` as user-facing split configs; there is no `easy.yml` or `hard.yml`.
 
 The concrete domain-randomization delta is:
 
@@ -70,8 +70,8 @@ It must persist the actual value from the environment call into every context/la
 
 ### Action chunk to macro conversion
 
-- Flash-WAM and LingBot-VA RoboTwin configs both set `frame_chunk_size=2` and `action_per_frame=16`: `<WAM_OPD_ROOT>/third_party/Flash-WAM/wan_va/configs/va_robotwin_cfg.py:11-18` and `<WAVE_RL_ROOT>/third_party/lingbot-va/wan_va/configs/va_robotwin_cfg.py:11-18`.
-- The official evaluator sets `start_idx=1` for the first action chunk and `0` afterwards, then executes all entries in each remaining frame: `<WAVE_RL_ROOT>/third_party/lingbot-va/evaluation/robotwin/eval_polict_client_openpi.py:618-648`.
+- Flash-WAM and LingBot-VA RoboTwin configs both set `frame_chunk_size=2` and `action_per_frame=16`: `<WAM_OPD_ROOT>/third_party/Flash-WAM/wan_va/configs/va_robotwin_cfg.py:11-18` and `<RUNTIME_ROOT>/third_party/lingbot-va/wan_va/configs/va_robotwin_cfg.py:11-18`.
+- The official evaluator sets `start_idx=1` for the first action chunk and `0` afterwards, then executes all entries in each remaining frame: `<RUNTIME_ROOT>/third_party/lingbot-va/evaluation/robotwin/eval_polict_client_openpi.py:618-648`.
 - The current OPD runner reproduces that boundary with `start_frame = 1 if chunk_id == 0 else 0`: `<WAM_OPD_ROOT>/experiments/waopd_native_closed_loop_runner.py:1486-1497`.
 - The local helper encodes the same `16 + 32*k` formula: `<WAM_OPD_ROOT>/experiments/opd_task_specs.py:9-18`.
 
@@ -102,7 +102,7 @@ H1/H2 comes from the two paper appendices summarized in `research/paper_appendix
 | `place_dual_shoes` | H2 | 600 | 20 | `6/20` | unknown | exclude for now despite appendix-reference gap |
 | `scan_object` | H2 | 500 | 17 | `14/20` | unknown | viable after a paired clean Student baseline |
 
-Native caps are authoritative at `<WAVE_RL_ROOT>/third_party/RoboTwin-lingbot-native/task_config/_eval_step_limit.yml:9-17,27-42`.
+Native caps are authoritative at `<RUNTIME_ROOT>/third_party/RoboTwin-lingbot-native/task_config/_eval_step_limit.yml:9-17,27-42`.
 
 ### User-named tasks: exact native predicates
 
@@ -126,7 +126,7 @@ Native evaluation success is simply
 
 It does not require release, a final gripper pose, or stopping. The scripted expert internally aims for `0.7`, but `check_success()` defaults to `0.6`: `.../envs/open_microwave.py:31-58,75-105`. Terminal masking must use the native `0.6` threshold.
 
-The existing clean Teacher result is `14/20`; successful episodes range from 317 to 1242 control actions, so the 1500 cap is operationally relevant rather than a cosmetic outlier. Evidence: `<ARTIFACT_ROOT>/wave-rl/eval/robotwin_native_sweep/robotwin_grpo16h_20260706_190803/raw/demo_clean/open_microwave/seed_0/stseed-10000/metrics/open_microwave/res.json:2-6,29-169`.
+The existing clean Teacher result is `14/20`; successful episodes range from 317 to 1242 control actions, so the 1500 cap is operationally relevant rather than a cosmetic outlier. Evidence: `<ARTIFACT_ROOT>/native-runtime/eval/robotwin_native_sweep/robotwin_grpo16h_20260706_190803/raw/demo_clean/open_microwave/seed_0/stseed-10000/metrics/open_microwave/res.json:2-6,29-169`.
 
 #### `place_fan` — H1, 400 controls / 13 macros
 
@@ -162,7 +162,7 @@ All three below use `instruction_type=seen`, `test_num=20`, `demo_clean`, and th
 
    `[10000, 10006, 10008, 10012, 10016, 10020, 10022, 10024, 10027, 10030, 10033, 10034, 10035, 10036, 10037, 10039, 10043, 10047, 10049, 10050]`
 
-   Manifest: `<ARTIFACT_ROOT>/wave-rl/eval/robotwin_native_sweep/robotwin_grpo16h_20260706_190803/raw/demo_clean/open_microwave/seed_0/stseed-10000/metrics/open_microwave/res.json:2-28`.
+   Manifest: `<ARTIFACT_ROOT>/native-runtime/eval/robotwin_native_sweep/robotwin_grpo16h_20260706_190803/raw/demo_clean/open_microwave/seed_0/stseed-10000/metrics/open_microwave/res.json:2-28`.
 
 2. `put_object_cabinet`, Teacher `19/20`:
 

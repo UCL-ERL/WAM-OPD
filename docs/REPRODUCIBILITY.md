@@ -48,7 +48,7 @@ new directory. The dirty developer trainer was **not** included.
 | Direct upstream source bootstrap | Initial GitHub request failed with `Empty reply from server`; retry of `bash scripts/bootstrap_dependencies.sh` with a fresh isolated runtime root: PASS |
 | Downloaded revisions | LingBot-VA `58c2ae5bac46bd8114065bea9d7d256eb67c16c3`; RoboTwin `2eeec322d95799f537cbfe5f291a8220d965ccb8` |
 | Shell parsing and diff integrity | `bash -n` on the three changed launch/bootstrap scripts; `git diff --check`: PASS |
-| GPU / real model / simulator execution | **Not tested by this follow-up**; release remains HOLD |
+| GPU / real model / simulator execution | PASS: isolated server GPU7 smoke; `place_fan`, SS arm, one chunk, 16 controls, output status PASS |
 
 Operation receipt (finding S1 — runtime ownership): the retired requirement is
 a sibling research-workspace checkout and a Python interpreter inside another
@@ -62,6 +62,16 @@ running process was changed. The unrelated local trainer edits remain
 uncommitted. Reverting `7662c76` restores the source-only boundary change; no
 data migration is needed. Retained historical wrapper dependencies and the
 other release gaps below prevent a full standalone-runtime claim.
+
+The GPU smoke used only an unoccupied physical GPU and a separate `/tmp` output
+root. It loaded the released Student and official Teacher transformer, then
+completed one native closed-loop episode. The result was not counted as a
+benchmark score: `success=false` after the intentionally truncated 16-control
+step horizon. The output receipt had schema `waopd_native_closed_loop_run_v2`,
+`status=PASS`, `training_started=false`, and `episodes_started=1`. The server
+runtime was the observed environment, not a pristine source installation; the
+smoke therefore proves the public entry point and artifact serialization against
+that environment, not clean-machine CUDA reproducibility.
 
 Use Python 3.10–3.12; Python 3.11 is the version used for the fresh-environment
 check. No checkpoints or GPUs are required:
@@ -125,14 +135,13 @@ configuration to pass.
 5. Downloadable reproduction inputs (task metadata, qualified decisions,
    selected adapters and frozen 60-pair panels) have not been packaged into a
    documented public artifact release. They are not produced by `pip install`.
-6. `prototype_real_obs_action_teacher_bridge.py` is a historical diagnostic
-   with a direct `wave_rl` wrapper import; several additional server-only
-   historical diagnostics have similar imports. They have not been certified
-   in the independent environment. Do not install that framework to work
-   around this release gap: migrate and parity-test the required wrapper seam
-   before advertising these diagnostics as standalone. Existing artifact
-   provenance strings and explicit legacy environment settings are retained
-   for compatibility, not as new-user installation requirements.
+6. `prototype_real_obs_action_teacher_bridge.py` and several server-only
+   historical diagnostics use an older internal adapter wrapper. They have not
+   been certified in the independent environment and are not advertised as
+   standalone entry points. The formal native runner is direct and does not
+   import that historical adapter. Existing artifact provenance strings and
+   explicit legacy environment settings are retained for compatibility, not as
+   new-user installation requirements.
 
 ### Independent environment layout
 

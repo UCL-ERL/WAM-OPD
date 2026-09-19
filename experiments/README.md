@@ -5,6 +5,16 @@ the research server launches them with `python -m experiments.<module>`.
 
 ## Formal entry points
 
+For new users, start with the public operator command:
+
+```bash
+wam-opd doctor
+wam-opd manifest validate configs/generated/<manifest>.json
+```
+
+The `experiments` module paths below remain the stable implementation and
+server-compatibility surface.
+
 - `bind_qualified_success_path_task.py` and
   `bind_scaled_qualified_success_path_task.py` create validated manifests.
 - `run_qualified_success_path_pipeline.py` and

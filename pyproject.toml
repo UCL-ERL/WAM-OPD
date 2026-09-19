@@ -25,8 +25,11 @@ runtime = [
   "websockets",
 ]
 
+[project.scripts]
+wam-opd = "wam_opd.cli:main"
+
 [tool.setuptools.packages.find]
-include = ["experiments*"]
+include = ["experiments*", "wam_opd*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

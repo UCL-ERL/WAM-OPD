@@ -139,7 +139,7 @@ Define these source-machine placeholders after login:
 
 ```text
 <OPD_REPO>      = /home/<remote-user>/ylhc/LingbotVA-OPD
-<WAVE_RL>       = /home/<remote-user>/ylhc/wave-rl
+<WAM_OPD_RUNTIME_ROOT> = /path/to/WAM-OPD
 <ARTIFACT_ROOT> = /ssd/data/<remote-user>/ylhc/artifacts
 ```
 
@@ -147,7 +147,7 @@ Define these source-machine placeholders after login:
 
 Copy or reproduce the exact runtime versions:
 
-- `wave-rl` commit: `d7aeed296ef1daa98cfda0108fd3475946226971`
+- pinned runtime source revisions: see `repro/dependencies.yaml`
 - `third_party/lingbot-va` commit: `58c2ae5bac46bd8114065bea9d7d256eb67c16c3`
 - RoboTwin parity checkout, if simulator replay is required: `2eeec322d95799f537cbfe5f291a8220d965ccb8`
 - The current `LingbotVA-OPD` tree is an unversioned working snapshot on the source host. A normal clone is not sufficient. Copy the exact relevant files and create a file-hash manifest on the destination.

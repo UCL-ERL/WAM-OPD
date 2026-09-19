@@ -1,6 +1,6 @@
 PYTHON ?= python3
 
-.PHONY: compile hygiene test test-runtime
+.PHONY: compile hygiene doctor test test-runtime
 
 compile:
 	$(PYTHON) -m compileall -q experiments tests
@@ -8,11 +8,15 @@ compile:
 hygiene:
 	$(PYTHON) scripts/check_repository_hygiene.py
 
+doctor:
+	$(PYTHON) -m wam_opd doctor
+
 test: compile hygiene
 	$(PYTHON) -m pytest -q \
 		tests/test_repository_hygiene.py \
 		tests/test_bootstrap_dependencies.py \
 		tests/test_runtime_paths.py \
+		tests/test_cli.py \
 		tests/test_opd_task_specs.py \
 		experiments/test_qualified_success_path_pipeline.py \
 		experiments/test_scaled_qualified_success_path_pipeline.py \
