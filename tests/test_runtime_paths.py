@@ -42,3 +42,14 @@ def test_python_override_preserves_venv_symlink(tmp_path):
         capture_output=True, text=True, check=True,
     )
     assert result.stdout.strip() == str(interpreter)
+
+
+def test_installed_style_import_prefers_checkout_cwd(tmp_path):
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        [sys.executable, "-c", "from experiments.paths import REPO_ROOT; print(REPO_ROOT)"],
+        cwd=root,
+        env={**os.environ},
+        capture_output=True, text=True, check=True,
+    )
+    assert result.stdout.strip() == str(root)

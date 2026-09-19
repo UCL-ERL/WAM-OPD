@@ -15,7 +15,21 @@ def _path(name: str, default: Path) -> Path:
     return Path(os.environ.get(name, str(default))).expanduser().resolve()
 
 
-REPO_ROOT = _path("WAM_OPD_ROOT", Path(__file__).resolve().parents[1])
+def _default_repo_root() -> Path:
+    """Find the checkout when the package is installed non-editably.
+
+    A wheel places ``experiments`` in site-packages, which is not the working
+    repository and must not become the default artifact root. The current
+    directory is a checkout only when it has the repository marker files.
+    """
+
+    current = Path.cwd()
+    if (current / "pyproject.toml").is_file() and (current / "experiments").is_dir():
+        return current
+    return Path(__file__).resolve().parents[1]
+
+
+REPO_ROOT = _path("WAM_OPD_ROOT", _default_repo_root())
 RUNTIME_ROOT = _path(
     "WAM_OPD_RUNTIME_ROOT",
     Path(os.environ.get("WAVE_RL_ROOT", os.environ.get("PROJECT_ROOT", str(REPO_ROOT)))),
