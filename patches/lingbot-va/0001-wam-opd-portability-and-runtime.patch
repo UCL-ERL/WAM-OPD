@@ -1,0 +1,401 @@
+diff --git a/evaluation/robotwin/eval_polict_client_openpi.py b/evaluation/robotwin/eval_polict_client_openpi.py
+index 7ed5265..ce04a8b 100644
+--- a/evaluation/robotwin/eval_polict_client_openpi.py
++++ b/evaluation/robotwin/eval_polict_client_openpi.py
+@@ -1,12 +1,19 @@
+ import sys
+ import os
+ import subprocess
++import time
+ import matplotlib.pyplot as plt
+ from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
+ import cv2
+ from pathlib import Path
+ 
+-robowin_root = Path("/path/to/your/robowin")
++def _default_robotwin_root():
++    return Path(__file__).resolve().parents[3] / "RoboTwin-lingbot-native"
++
++
++robowin_root = Path(os.environ.get("ROBOTWIN_ROOT", _default_robotwin_root())).expanduser().resolve()
++if not robowin_root.exists():
++    raise FileNotFoundError(f"RoboTwin root not found: {robowin_root}")
+ if str(robowin_root) not in sys.path:
+     sys.path.insert(0, str(robowin_root))
+ 
+@@ -43,6 +50,9 @@ from pathlib import Path
+ from evaluation.robotwin.websocket_client_policy import WebsocketClientPolicy
+ from evaluation.robotwin.test_render import Sapien_TEST
+ 
++def log_stage(message):
++    print(f"[robotwin-eval] {datetime.now().isoformat(timespec='seconds')} {message}", flush=True)
++
+ def write_json(data: dict, fpath: Path) -> None:
+     """Write data to a JSON file.
+ 
+@@ -56,6 +66,15 @@ def write_json(data: dict, fpath: Path) -> None:
+     with open(fpath, "w") as f:
+         json.dump(data, f, indent=4, ensure_ascii=False)
+ 
++
++def as_bool(value):
++    if isinstance(value, bool):
++        return value
++    if isinstance(value, (int, float)):
++        return bool(value)
++    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
++
++
+ def add_title_bar(img, text, font_scale=0.8, thickness=2):
+     """Add a black title bar with text above the image"""
+     h, w, _ = img.shape
+@@ -305,7 +324,9 @@ def main(usr_args):
+     policy_name = usr_args["policy_name"]
+     video_guidance_scale = usr_args["video_guidance_scale"]
+     action_guidance_scale = usr_args["action_guidance_scale"]
+-    instruction_type = 'seen'
++    instruction_type = usr_args.get("instruction_type", "seen")
++    save_visualization = as_bool(usr_args.get("save_visualization", True))
++    save_video = as_bool(usr_args.get("save_video", True))
+     save_dir = None
+     video_save_dir = None
+     video_size = None
+@@ -317,6 +338,9 @@ def main(usr_args):
+     args["task_config"] = task_config
+     args["ckpt_setting"] = ckpt_setting
+     args["save_root"] = save_root
++    for key in ("eval_video_log", "render_freq", "clear_cache_freq"):
++        if key in usr_args:
++            args[key] = as_bool(usr_args[key]) if key == "eval_video_log" else usr_args[key]
+ 
+     embodiment_type = args.get("embodiment")
+     embodiment_config_path = os.path.join(CONFIGS_PATH, "_embodiment_config.yml")
+@@ -407,7 +431,8 @@ def main(usr_args):
+                                    test_num=test_num,
+                                    video_size=video_size,
+                                    instruction_type=instruction_type,
+-                                   save_visualization=True,
++                                   save_visualization=save_visualization,
++                                   save_video=save_video,
+                                    video_guidance_scale=video_guidance_scale,
+                                    action_guidance_scale=action_guidance_scale)
+     suc_nums.append(suc_num)
+@@ -450,6 +475,7 @@ def eval_policy(task_name,
+                 video_size=None,
+                 instruction_type=None,
+                 save_visualization=False,
++                save_video=True,
+                 video_guidance_scale=5.0,
+                 action_guidance_scale=5.0):
+     print(f"\033[34mTask Name: {args['task_name']}\033[0m")
+@@ -462,6 +488,7 @@ def eval_policy(task_name,
+     now_id = 0
+     succ_seed = 0
+     suc_test_seed_list = []
++    episode_records = []
+ 
+ 
+     now_seed = st_seed
+@@ -475,10 +502,17 @@ def eval_policy(task_name,
+ 
+         if expert_check:
+             try:
++                stage_t0 = time.perf_counter()
++                log_stage(f"expert setup_demo start seed={now_seed} episode={now_id}")
+                 TASK_ENV.setup_demo(now_ep_num=now_id, seed=now_seed, is_test=True, **args)
++                log_stage(f"expert setup_demo done seed={now_seed} elapsed={time.perf_counter() - stage_t0:.2f}s")
++                stage_t0 = time.perf_counter()
++                log_stage(f"expert play_once start seed={now_seed}")
+                 episode_info = TASK_ENV.play_once()
++                log_stage(f"expert play_once done seed={now_seed} elapsed={time.perf_counter() - stage_t0:.2f}s")
+                 TASK_ENV.close_env()
+             except UnStableError as e:
++                log_stage(f"expert unstable seed={now_seed}: {e}")
+                 TASK_ENV.close_env()
+                 now_seed += 1
+                 args["render_freq"] = render_freq
+@@ -494,14 +528,19 @@ def eval_policy(task_name,
+         if (not expert_check) or (TASK_ENV.plan_success and TASK_ENV.check_success()):
+             succ_seed += 1
+             suc_test_seed_list.append(now_seed)
++            log_stage(f"accepted eval seed={now_seed} accepted={succ_seed}/{test_num}")
+         else:
++            log_stage(f"expert rejected seed={now_seed} plan_success={TASK_ENV.plan_success}")
+             now_seed += 1
+             args["render_freq"] = render_freq
+             continue
+ 
+         args["render_freq"] = render_freq
+ 
++        stage_t0 = time.perf_counter()
++        log_stage(f"eval setup_demo start seed={now_seed} episode={now_id}")
+         TASK_ENV.setup_demo(now_ep_num=now_id, seed=now_seed, is_test=True, **args)
++        log_stage(f"eval setup_demo done seed={now_seed} elapsed={time.perf_counter() - stage_t0:.2f}s")
+         episode_info_list = [episode_info["info"]]
+         results = generate_episode_descriptions(args["task_name"], episode_info_list, test_num)
+         instruction = np.random.choice(results[0][instruction_type])
+@@ -539,7 +578,10 @@ def eval_policy(task_name,
+         succ = False
+ 
+         prompt = TASK_ENV.get_instruction()
++        stage_t0 = time.perf_counter()
++        log_stage(f"policy reset start seed={now_seed}")
+         ret = model.infer(dict(reset = True, prompt=prompt, save_visualization=save_visualization))
++        log_stage(f"policy reset done seed={now_seed} elapsed={time.perf_counter() - stage_t0:.2f}s")
+         
+         first = True
+         full_obs_list = []
+@@ -553,16 +595,22 @@ def eval_policy(task_name,
+         [initial_obs['endpose']['right_gripper']]
+         inint_eef_pose = np.array(inint_eef_pose, dtype=np.float64)
+         initial_formatted_obs = format_obs(initial_obs, prompt)
+-        full_obs_list.append(initial_formatted_obs)
++        if save_video:
++            full_obs_list.append(initial_formatted_obs)
+         first_obs = None
+         while TASK_ENV.take_action_cnt<TASK_ENV.step_lim:
+             if first:
+                 observation = TASK_ENV.get_obs()
+                 first_obs = format_obs(observation, prompt)
+ 
++            if first:
++                stage_t0 = time.perf_counter()
++                log_stage(f"policy first action start seed={now_seed}")
+             ret = model.infer(dict(obs=first_obs, prompt=prompt, save_visualization=save_visualization, video_guidance_scale=video_guidance_scale, action_guidance_scale=action_guidance_scale)) #(TASK_ENV, model, observation)
++            if first:
++                log_stage(f"policy first action done seed={now_seed} elapsed={time.perf_counter() - stage_t0:.2f}s")
+             action = ret['action']
+-            if 'video' in ret:
++            if save_video and 'video' in ret:
+                 imagined_video = ret['video']
+                 gen_video_list.append(imagined_video)
+             key_frame_list = []
+@@ -574,7 +622,8 @@ def eval_policy(task_name,
+             for i in range(start_idx, action.shape[1]):
+                 for j in range(action.shape[2]):
+                     raw_action_step = action[:, i, j].flatten() 
+-                    full_action_history.append(raw_action_step)
++                    if save_video:
++                        full_action_history.append(raw_action_step)
+ 
+                     ee_action = action[:, i, j]
+                     if action.shape[0] == 14:
+@@ -600,7 +649,8 @@ def eval_policy(task_name,
+                    
+                     if (j+1) % action_per_frame == 0:
+                         obs = format_obs(TASK_ENV.get_obs(), prompt)
+-                        full_obs_list.append(obs)
++                        if save_video:
++                            full_obs_list.append(obs)
+                         key_frame_list.append(obs)
+                     
+             first = False
+@@ -612,17 +662,18 @@ def eval_policy(task_name,
+                 break
+       
+ 
+-        vis_dir = Path(args['save_root']) / f'stseed-{st_seed}' / 'visualization' / task_name
+-        vis_dir.mkdir(parents=True, exist_ok=True)
+-        video_name = f"{TASK_ENV.test_num}_{prompt.replace(' ', '_')}_{succ}.mp4"
+-        out_img_file = vis_dir / video_name
+-        save_comparison_video(
+-            real_obs_list=full_obs_list,
+-            imagined_video=None, #gen_video_list,
+-            action_history=full_action_history,
+-            save_path=str(out_img_file),
+-            fps=15 # Suggest adjusting fps based on simulation step
+-        )
++        if save_video:
++            vis_dir = Path(args['save_root']) / f'stseed-{st_seed}' / 'visualization' / task_name
++            vis_dir.mkdir(parents=True, exist_ok=True)
++            video_name = f"{TASK_ENV.test_num}_{prompt.replace(' ', '_')}_{succ}.mp4"
++            out_img_file = vis_dir / video_name
++            save_comparison_video(
++                real_obs_list=full_obs_list,
++                imagined_video=None, #gen_video_list,
++                action_history=full_action_history,
++                save_path=str(out_img_file),
++                fps=15 # Suggest adjusting fps based on simulation step
++            )
+         if TASK_ENV.eval_video_path is not None:
+             TASK_ENV._del_eval_video_ffmpeg()
+ 
+@@ -632,6 +683,14 @@ def eval_policy(task_name,
+         else:
+             print("\033[91mFail!\033[0m")
+ 
++        episode_records.append({
++            "episode": int(TASK_ENV.test_num),
++            "seed": int(now_seed),
++            "success": bool(succ),
++            "take_action_cnt": int(getattr(TASK_ENV, "take_action_cnt", -1)),
++            "instruction": prompt,
++        })
++
+         now_id += 1
+         TASK_ENV.close_env(clear_cache=((succ_seed + 1) % clear_cache_freq == 0))
+ 
+@@ -647,6 +706,12 @@ def eval_policy(task_name,
+           "succ_num": float(TASK_ENV.suc),
+           "total_num": float(TASK_ENV.test_num),
+           "succ_rate": float(TASK_ENV.suc / TASK_ENV.test_num),
++          "start_seed": int(st_seed),
++          "current_seed": int(now_seed),
++          "accepted_seed_list": [int(seed) for seed in suc_test_seed_list],
++          "episode_records": episode_records,
++          "instruction_type": instruction_type,
++          "task_config": args.get("task_config"),
+         }, out_json_file)
+         
+         print(
+@@ -697,4 +762,3 @@ if __name__ == "__main__":
+     Sapien_TEST()
+     usr_args = parse_args_and_config()
+     main(usr_args)
+-
+diff --git a/evaluation/robotwin/websocket_client_policy.py b/evaluation/robotwin/websocket_client_policy.py
+index b416835..b9d83c1 100644
+--- a/evaluation/robotwin/websocket_client_policy.py
++++ b/evaluation/robotwin/websocket_client_policy.py
+@@ -13,7 +13,7 @@ class WebsocketClientPolicy:
+     See WebsocketPolicyServer for a corresponding server implementation.
+     """
+ 
+-    def __init__(self, host: str = "0.0.0.0", port: Optional[int] = None, api_key: Optional[str] = None) -> None:
++    def __init__(self, host: str = "127.0.0.1", port: Optional[int] = None, api_key: Optional[str] = None) -> None:
+         self._uri = f"ws://{host}"
+         if port is not None:
+             self._uri += f":{port}"
+@@ -39,7 +39,7 @@ class WebsocketClientPolicy:
+     #             time.sleep(5)
+ 
+     def _wait_for_server(self) -> Tuple[websockets.sync.client.ClientConnection, Dict]:
+-        logging.info(f"Waiting for server at {self._uri}...")
++        print(f"[websocket-client] waiting for server at {self._uri}", flush=True)
+         while True:
+             try:
+                 headers = {"Authorization": f"Api-Key {self._api_key}"} if self._api_key else None
+@@ -49,13 +49,16 @@ class WebsocketClientPolicy:
+                     compression=None, 
+                     max_size=None, 
+                     additional_headers=headers,
++                    open_timeout=10,
+                     ping_interval=None, 
+-                    close_timeout=10
++                    close_timeout=10,
++                    proxy=None,
+                 )
+-                metadata = unpackb(conn.recv())
++                metadata = unpackb(conn.recv(timeout=10))
++                print(f"[websocket-client] connected to {self._uri}", flush=True)
+                 return conn, metadata
+             except (ConnectionRefusedError, Exception) as e:
+-                logging.info(f"Still waiting for server... (Error: {e})")
++                print(f"[websocket-client] still waiting for server at {self._uri}: {e}", flush=True)
+                 time.sleep(5)
+ 
+     @override
+diff --git a/wan_va/modules/model.py b/wan_va/modules/model.py
+index 25b45e5..d4edad9 100644
+--- a/wan_va/modules/model.py
++++ b/wan_va/modules/model.py
+@@ -1,5 +1,6 @@
+ # Copyright 2024-2025 The Robbyant Team Authors. All rights reserved.
+ import math
++import os
+ from copy import deepcopy
+ 
+ import torch
+@@ -35,15 +36,37 @@ __all__ = ['WanTransformer3DModel']
+ 
+ 
+ def custom_sdpa(q, k, v):
+-    out = F.scaled_dot_product_attention(q.transpose(1, 2), k.transpose(1, 2),
+-                                         v.transpose(1, 2))
++    q = q.transpose(1, 2)
++    k = k.transpose(1, 2)
++    v = v.transpose(1, 2)
++    sdpa_backend = os.environ.get("LINGBOT_VA_SDPA_BACKEND")
++    if sdpa_backend:
++        from torch.nn.attention import SDPBackend, sdpa_kernel
++
++        backends = {
++            "efficient": SDPBackend.EFFICIENT_ATTENTION,
++            "flash": SDPBackend.FLASH_ATTENTION,
++            "math": SDPBackend.MATH,
++        }
++        try:
++            backend = backends[sdpa_backend]
++        except KeyError as exc:
++            raise ValueError(
++                "LINGBOT_VA_SDPA_BACKEND must be one of "
++                f"{sorted(backends)}, got {sdpa_backend!r}"
++            ) from exc
++        with sdpa_kernel(backend):
++            out = F.scaled_dot_product_attention(q, k, v)
++    else:
++        out = F.scaled_dot_product_attention(q, k, v)
+     return out.transpose(1, 2)
+ 
+ class FlexAttnFunc(nn.Module):
+-    flex_attn: ClassVar[Callable] = torch.compile(
+-        flex_attention, dynamic=True, 
++    _disable_flex_compile = os.environ.get("LINGBOT_VA_DISABLE_FLEX_COMPILE") == "1"
++    flex_attn: ClassVar[Callable] = flex_attention if _disable_flex_compile else torch.compile(
++        flex_attention, dynamic=True,
+     )
+-    compiled_create_block_mask: ClassVar[Callable] = torch.compile(create_block_mask)
++    compiled_create_block_mask: ClassVar[Callable] = create_block_mask if _disable_flex_compile else torch.compile(create_block_mask)
+     attention_mask: ClassVar[BlockMask] = None
+     cross_attention_mask: ClassVar[BlockMask] = None
+ 
+diff --git a/wan_va/wan_va_server.py b/wan_va/wan_va_server.py
+index 4c95ace..162d23c 100644
+--- a/wan_va/wan_va_server.py
++++ b/wan_va/wan_va_server.py
+@@ -222,10 +222,18 @@ class VA_Server:
+         return latents
+ 
+     def preprocess_action(self, action):
++        import numpy as np
++        action = np.squeeze(np.asarray(action, dtype=np.float32))
++        if action.ndim == 2 and action.shape[-1] == 14: action = action.T[:, :, None]
++        elif action.ndim == 3 and action.shape[0] != 14 and action.shape[1] == 14: action = action.transpose(1, 0, 2)
++        elif action.ndim > 3 and action.size % 14 == 0: action = action.reshape(14, -1, 1)
++        if action.ndim == 3 and action.shape[0] != 14 and 14 in action.shape: action = np.moveaxis(action, list(action.shape).index(14), 0)
++        if action.size % 14 == 0:
++            action = action.reshape(-1, 14).T[:, :, None]
+         action_model_input = torch.from_numpy(action)
+         CA, FA, HA = action_model_input.shape  # C, F, H
+         action_model_input_paded = F.pad(action_model_input,
+-                                         [0, 0, 0, 0, 0, 1],
++                                         [0, 0, 0, 0, 0, 3],
+                                          mode='constant',
+                                          value=0)
+ 
+@@ -680,6 +688,11 @@ def run(args):
+     port = config.port if args.port is None else args.port
+     if args.save_root is not None:
+         config.save_root = args.save_root
++    checkpoint_path = args.checkpoint_path
++    if checkpoint_path is None:
++        checkpoint_path = os.getenv("LINGBOT_VA_ROBOTWIN_CKPT" if args.config_name == "robotwin" else "LINGBOT_VA_CKPT")
++    if checkpoint_path is not None:
++        config.wan22_pretrained_model_name_or_path = checkpoint_path
+     rank = int(os.getenv("RANK", 0))
+     local_rank = int(os.environ.get('LOCAL_RANK', 0))
+     world_size = int(os.environ.get("WORLD_SIZE", 1))
+@@ -721,6 +734,12 @@ def main():
+         default=None,
+         help='save root'
+     )
++    parser.add_argument(
++        "--checkpoint_path",
++        type=str,
++        default=None,
++        help='LingBot-VA checkpoint root. Defaults to LINGBOT_VA_ROBOTWIN_CKPT for robotwin.',
++    )
+     args = parser.parse_args()
+     run(args)
+     logger.info("Finish all process!!!!!!!!!!!!")
+

@@ -3,6 +3,7 @@ source_repositories:
     url: https://github.com/robbyant/lingbot-va.git
     location: third_party/lingbot-va
     commit: 58c2ae5bac46bd8114065bea9d7d256eb67c16c3
+    wam_opd_patch: patches/lingbot-va/0001-wam-opd-portability-and-runtime.patch
   robotwin:
     url: https://github.com/RoboTwin-Platform/RoboTwin.git
     location: third_party/RoboTwin-lingbot-native

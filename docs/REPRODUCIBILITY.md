@@ -45,8 +45,8 @@ new directory. The dirty developer trainer was **not** included.
 | Lightweight repository gates | `make test`: **54 passed**, compile and hygiene PASS |
 | Broader CPU suite from clean checkout | With the separate Torch 2.6.0 test environment and `einops`: `CUDA_VISIBLE_DEVICES='' python -m pytest -q experiments tests -rs`: **256 passed, 1 skipped** |
 | Skip | Native closed-loop test requires the external LingBot-VA runtime |
-| Direct upstream source bootstrap | Initial GitHub request failed with `Empty reply from server`; retry of `bash scripts/bootstrap_dependencies.sh` with a fresh isolated runtime root: PASS |
-| Downloaded revisions | LingBot-VA `58c2ae5bac46bd8114065bea9d7d256eb67c16c3`; RoboTwin `2eeec322d95799f537cbfe5f291a8220d965ccb8` |
+| Direct upstream source bootstrap | Fresh isolated source checkout plus versioned WAM-OPD compatibility patch: PASS; the bootstrap refuses existing source directories |
+| Downloaded revisions | LingBot-VA `58c2ae5bac46bd8114065bea9d7d256eb67c16c3` plus `patches/lingbot-va/0001-wam-opd-portability-and-runtime.patch`; RoboTwin `2eeec322d95799f537cbfe5f291a8220d965ccb8` |
 | Shell parsing and diff integrity | `bash -n` on the three changed launch/bootstrap scripts; `git diff --check`: PASS |
 | GPU / real model / simulator execution | PASS on release commit `cc4d566`: isolated server GPU7 smoke; `place_fan`, SS arm, one chunk, 16 controls, output status PASS |
 

@@ -3,3 +3,4 @@
 *.py text eol=lf
 *.md text eol=lf
 *.json text eol=lf
+patches/lingbot-va/*.patch -diff whitespace=-trailing-space

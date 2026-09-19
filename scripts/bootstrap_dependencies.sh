@@ -33,6 +33,14 @@ if [[ "$missing" -ne 0 ]]; then
   exit 2
 fi
 
-echo "Pinned upstream source checkouts ready under $runtime_root/third_party."
+runtime_patch="$repo_root/patches/lingbot-va/0001-wam-opd-portability-and-runtime.patch"
+if [[ ! -f "$runtime_patch" ]]; then
+  echo "missing WAM-OPD upstream patch: $runtime_patch" >&2
+  exit 2
+fi
+git -C "$lingbot_root" apply --check "$runtime_patch"
+git -C "$lingbot_root" apply "$runtime_patch"
+
+echo "Pinned upstream source checkouts and WAM-OPD compatibility patch ready under $runtime_root/third_party."
 echo "Source download only: Python/CUDA packages, model weights and simulator assets are not installed."
-echo "Server-specific upstream patches are not yet packaged; GPU reproduction remains uncertified."
+echo "Model weights, simulator assets and CUDA packages remain separate prerequisites."
