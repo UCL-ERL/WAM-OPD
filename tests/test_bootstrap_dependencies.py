@@ -33,6 +33,19 @@ def test_bootstrap_reports_missing_external_trees(tmp_path):
     assert "RoboTwin-lingbot-native" in result.stderr
 
 
+def test_runtime_patch_is_versioned_and_covers_required_seams():
+    patch = Path(__file__).resolve().parents[1] / "patches/lingbot-va/0001-wam-opd-portability-and-runtime.patch"
+    text = patch.read_text(encoding="utf-8")
+    for marker in (
+        "evaluation/robotwin/eval_polict_client_openpi.py",
+        "wan_va/modules/model.py",
+        "wan_va/wan_va_server.py",
+        "LINGBOT_VA_DISABLE_FLEX_COMPILE",
+        "LINGBOT_VA_ROBOTWIN_CKPT",
+    ):
+        assert marker in text
+
+
 @pytest.mark.parametrize("source", ["lingbot-va", "RoboTwin-lingbot-native"])
 def test_bootstrap_preserves_existing_sources(tmp_path, source):
     existing = tmp_path / "third_party" / source
