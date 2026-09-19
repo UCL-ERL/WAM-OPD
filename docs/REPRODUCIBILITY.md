@@ -25,7 +25,7 @@ checkpoint, trajectory, running process, or server source file was modified.
 | Training, teacher-free evaluation, screening, paired evaluation, scaled controller `--help` on Linux | All five exit 0 | Imports and CLI parsing work with the server dependencies. Models were not loaded. |
 | Real metadata → new scaled manifest → scaled `validate` | PASS: 24 train, 12 calibration, 4 screening, 6 held-out; 4 shards; formal12 | Binder/controller agree when given real inputs in separate output roots. |
 | Scaled manifest → old fixed-pipeline shell wrapper | Schema mismatch, reproduced | README formerly selected the wrong controller. Commands are corrected below. |
-| Distributed pilot against committed trainer | Signature bind fails for `distributed_context` | Pilot files were committed without their trainer-side implementation; not release-ready. |
+| Distributed success-path hooks | Focused trainer/distributed tests pass: 47 passed | The optional equivalence pilot has an explicit config/artifact contract and is not part of the default single-GPU pipeline. |
 | Historical capture dependency | `experiments.v0k_native_video_diagnostic` is missing | Static compilation and current tests do not cover every shipped entry point. |
 
 The macOS skip is reported by pytest; use `-rs` to see platform-specific reasons.
@@ -36,19 +36,19 @@ included in `make test`.
 
 ### September 20 follow-up: independent runtime defaults
 
-Verified source: commit `7662c76`, cloned with `git clone --no-local` into a
+Verified source: commit `cc4d566`, cloned with `git clone --no-local` into a
 new directory. The dirty developer trainer was **not** included.
 
 | Verification layer | Command / result |
 | --- | --- |
 | Fresh Python 3.11 venv and wheel install | `python -m pip install '<clean-checkout>[dev]'`: PASS, NumPy 2.4.6 / pytest 8.4.2 |
-| Lightweight repository gates | `make test`: **52 passed**, compile and hygiene PASS |
-| Broader CPU suite from clean checkout | With the separate Torch 2.6.0 test environment: `CUDA_VISIBLE_DEVICES='' python -m pytest -q experiments tests -rs`: **253 passed, 1 skipped** |
+| Lightweight repository gates | `make test`: **54 passed**, compile and hygiene PASS |
+| Broader CPU suite from clean checkout | With the separate Torch 2.6.0 test environment and `einops`: `CUDA_VISIBLE_DEVICES='' python -m pytest -q experiments tests -rs`: **256 passed, 1 skipped** |
 | Skip | Native closed-loop test requires the external LingBot-VA runtime |
 | Direct upstream source bootstrap | Initial GitHub request failed with `Empty reply from server`; retry of `bash scripts/bootstrap_dependencies.sh` with a fresh isolated runtime root: PASS |
 | Downloaded revisions | LingBot-VA `58c2ae5bac46bd8114065bea9d7d256eb67c16c3`; RoboTwin `2eeec322d95799f537cbfe5f291a8220d965ccb8` |
 | Shell parsing and diff integrity | `bash -n` on the three changed launch/bootstrap scripts; `git diff --check`: PASS |
-| GPU / real model / simulator execution | PASS: isolated server GPU7 smoke; `place_fan`, SS arm, one chunk, 16 controls, output status PASS |
+| GPU / real model / simulator execution | PASS on release commit `cc4d566`: isolated server GPU7 smoke; `place_fan`, SS arm, one chunk, 16 controls, output status PASS |
 
 Operation receipt (finding S1 — runtime ownership): the retired requirement is
 a sibling research-workspace checkout and a Python interpreter inside another
@@ -59,7 +59,7 @@ use WAM-OPD-owned paths. Explicit legacy environment settings and persisted
 interpreter identity, missing source detection and refusal to overwrite either
 existing source tree. No loss, checkpoint format, artifact, server source or
 running process was changed. The unrelated local trainer edits remain
-uncommitted. Reverting `7662c76` restores the source-only boundary change; no
+uncommitted. Reverting `7662c76` and its follow-up commits restores the source-only boundary change; no
 data migration is needed. Retained historical wrapper dependencies and the
 other release gaps below prevent a full standalone-runtime claim.
 
@@ -68,10 +68,12 @@ root. It loaded the released Student and official Teacher transformer, then
 completed one native closed-loop episode. The result was not counted as a
 benchmark score: `success=false` after the intentionally truncated 16-control
 step horizon. The output receipt had schema `waopd_native_closed_loop_run_v2`,
-`status=PASS`, `training_started=false`, and `episodes_started=1`. The server
-runtime was the observed environment, not a pristine source installation; the
-smoke therefore proves the public entry point and artifact serialization against
-that environment, not clean-machine CUDA reproducibility.
+`status=PASS`, `training_started=false`, and `episodes_started=1`; its JSON
+SHA256 was
+`993408a0b7f739cada43924dda0d6d76702d46d4f796b928875487ecd329fc9b`.
+The server runtime was the observed environment, not a pristine source
+installation; the smoke therefore proves the public entry point and artifact
+serialization against that environment, not clean-machine CUDA reproducibility.
 
 Use Python 3.10–3.12; Python 3.11 is the version used for the fresh-environment
 check. No checkpoints or GPUs are required:
