@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">WAM-OPD mark</title>
+  <desc id="desc">Two synchronized streams converge on a shared action and world model.</desc>
+  <defs>
+    <linearGradient id="world" x1="64" y1="64" x2="448" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2563eb"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+    <linearGradient id="action" x1="448" y1="64" x2="64" y2="448" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7c3aed"/>
+      <stop offset="1" stop-color="#c026d3"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#0b1020"/>
+  <path d="M126 156h112c54 0 86 28 86 72s-32 72-86 72H126" fill="none" stroke="url(#world)" stroke-width="38" stroke-linecap="round"/>
+  <path d="M386 156H274c-54 0-86 28-86 72s32 72 86 72h112" fill="none" stroke="url(#action)" stroke-width="38" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="25" fill="#f8fafc"/>
+  <circle cx="126" cy="156" r="14" fill="#7dd3fc"/>
+  <circle cx="386" cy="156" r="14" fill="#e879f9"/>
+  <circle cx="126" cy="300" r="14" fill="#38bdf8"/>
+  <circle cx="386" cy="300" r="14" fill="#c026d3"/>
+</svg>

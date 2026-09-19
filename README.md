@@ -1,6 +1,19 @@
-# WAM-OPD
+<p align="center">
+  <img src="docs/assets/wam-opd-mark.svg" width="112" alt="WAM-OPD mark">
+</p>
 
-On-policy distillation for joint World-Action Models (WAMs).
+<h1 align="center">WAM-OPD</h1>
+
+<p align="center"><strong>On-policy distillation for joint World-Action Models</strong><br>
+Teacher supervision on the states a Student actually visits.</p>
+
+<p align="center">
+  <a href="#installation">Install</a> ·
+  <a href="#pipeline-at-a-glance">Pipeline</a> ·
+  <a href="#verify-the-repository">Verify</a> ·
+  <a href="docs/REPRODUCIBILITY.md">Reproducibility</a> ·
+  <a href="#citation-and-license">Citation &amp; license</a>
+</p>
 
 > Release candidate: CPU verification and one isolated server GPU smoke test
 > are passing. Full fresh-machine benchmark reproduction is **not yet
@@ -15,6 +28,8 @@ interface.
 
 <p align="center">
   <a href="https://github.com/UCL-ERL/WAM-OPD/actions/workflows/ci.yml"><img src="https://github.com/UCL-ERL/WAM-OPD/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/UCL-ERL/WAM-OPD" alt="Apache-2.0 license"></a>
+  <img src="https://img.shields.io/badge/python-3.10--3.12-3776AB?logo=python&logoColor=white" alt="Python 3.10 to 3.12">
   <a href="QUALIFIED_SUCCESS_PATH_PIPELINE_V1.md">pipeline contract</a>
   · <a href="docs/REPOSITORY_LAYOUT.md">repository layout</a>
   · <a href="docs/ARTIFACT_POLICY.md">artifact policy</a>
@@ -82,7 +97,8 @@ publishing checkpoints or server-only paths.
 
 ## Project structure
 
-See [`docs/REPOSITORY_LAYOUT.md`](docs/REPOSITORY_LAYOUT.md) for ownership and
+See the [documentation map](docs/README.md) and
+[`docs/REPOSITORY_LAYOUT.md`](docs/REPOSITORY_LAYOUT.md) for ownership and
 compatibility rules. The short version is:
 
 | Path | Responsibility |
