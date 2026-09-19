@@ -10,6 +10,8 @@ hygiene:
 
 test: compile hygiene
 	$(PYTHON) -m pytest -q \
+		tests/test_repository_hygiene.py \
+		tests/test_bootstrap_dependencies.py \
 		tests/test_opd_task_specs.py \
 		experiments/test_qualified_success_path_pipeline.py \
 		experiments/test_scaled_qualified_success_path_pipeline.py \

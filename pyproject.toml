@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -9,9 +9,11 @@ description = "On-policy distillation for joint World-Action Models"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 authors = [{name = "ylhaichen"}]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<9"]
+dev = ["numpy", "pytest>=8,<9"]
 runtime = [
   "accelerate",
   "diffusers==0.36.0",

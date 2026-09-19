@@ -2,6 +2,10 @@
 
 On-policy distillation for joint World-Action Models (WAMs).
 
+> Release status: CPU verification is available; fresh-machine GPU experiment
+> reproduction is **not yet certified**. Read the known dependency and source
+> gaps in [Reproducibility](docs/REPRODUCIBILITY.md) before starting a run.
+
 WAM-OPD studies how a full-step LingBot-VA Teacher can improve a released,
 few-step Flash-WAM Student on the states that the Student actually visits in
 RoboTwin. The central object is a coherent video/action Teacher target: the
@@ -105,8 +109,20 @@ provides LingBot-VA, RoboTwin, and the pinned RoboTwin environment.
 git clone https://github.com/UCL-ERL/WAM-OPD.git
 cd WAM-OPD
 
-# Optional: clone the pinned external source next to this repository.
-./scripts/bootstrap_dependencies.sh
+# Lightweight development/tests (Python 3.10–3.12; no model downloads).
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install '.[dev]'
+make test
+```
+
+For GPU experiments, use a separately prepared RoboTwin/LingBot environment.
+The current `bootstrap_dependencies.sh` clones a workspace scaffold, **not** a
+complete runtime. It now reports missing external source trees instead of
+claiming installation succeeded. See [Reproducibility](docs/REPRODUCIBILITY.md)
+for the missing release inputs and observed server environment.
+
+```bash
 
 cp .env.example .env
 # Set WAVE_RL_ROOT, WAM_OPD_PYTHON_BIN, model roots, and artifact roots.
@@ -122,6 +138,10 @@ The full pipeline needs these external inputs:
 3. RoboTwin native source and assets through `wave-rl`;
 4. a qualified task decision and outcome-free episode metadata;
 5. writable artifact and scratch roots outside this repository.
+
+The current formal validators require artifact output and qualification paths
+under `/ssd/data`; arbitrary paths shown in `.env.example` are placeholders,
+not a promise that every storage layout is supported.
 
 ## Verify the repository
 
@@ -165,17 +185,26 @@ python3 -m experiments.bind_scaled_qualified_success_path_task \
   --calibration-count 12 \
   --screening-count 4 \
   --heldout-count 6 \
+  --collection-workers-per-gpu 1 \
   --run-date YYYYMMDD
 
-./scripts/run_qualified_success_path_pipeline.sh \
-  configs/generated/<task>_scaled_qualified_pipeline_v1_<date>.json validate
+python3 -m experiments.run_scaled_qualified_success_path_pipeline validate \
+  --manifest configs/generated/<task>_scaled_qualified_pipeline_v1_<date>.json
 
-./scripts/run_qualified_success_path_pipeline.sh \
-  configs/generated/<task>_scaled_qualified_pipeline_v1_<date>.json run --dry-run
+# Starts real GPU collection probes; this is NOT a dry-run.
+python3 -m experiments.run_scaled_qualified_success_path_pipeline canary \
+  --manifest configs/generated/<task>_scaled_qualified_pipeline_v1_<date>.json \
+  --workers-per-gpu 1
 
-./scripts/run_qualified_success_path_pipeline.sh \
-  configs/generated/<task>_scaled_qualified_pipeline_v1_<date>.json run
+python3 -m experiments.run_scaled_qualified_success_path_pipeline run \
+  --manifest configs/generated/<task>_scaled_qualified_pipeline_v1_<date>.json
 ```
+
+Use the configured runtime interpreter for all GPU commands above. The scaled
+controller requires a canary decision and does not implement `--dry-run`.
+The older shell wrapper is for the fixed 8-train/4-calibration pipeline, not
+the scaled manifest above. This example ends with formal12 (6 held-out seeds
+× 2 noise banks), **not** a complete paper paired60 evaluation.
 
 The controller is fail-closed: it derives state from stage receipts, refuses
 partial or ambiguous output, and never deletes or overwrites an existing
@@ -235,6 +264,6 @@ The current contributor list is in [`CONTRIBUTORS.md`](CONTRIBUTORS.md).
 
 ## Citation and license
 
-The citation entry and license will be finalized with the author and release
-policy. Until then, the repository should be treated as research code whose
-external model, dataset, and simulator licenses remain applicable.
+Repository code is licensed under [Apache-2.0](LICENSE). External models,
+datasets, simulators, and separately distributed dependencies retain their own
+licenses. The citation and final author list are deferred until release.

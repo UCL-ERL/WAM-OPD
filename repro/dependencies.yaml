@@ -11,10 +11,26 @@ source_repositories:
     commit: 5b8df13e9db24fb15ce42ff5ccc60a4015195960
     note: reference implementation; not vendored by this repository
 
-validated_environment:
+historical_environment_record:
+  note: previous record; not the runtime observed during the September 20 CPU verification
   python: 3.10.16
   pytorch: 2.9.0
   cuda: "12.6"
   torchvision: 0.24.0
   diffusers: 0.36.0
   transformers: 4.55.2
+
+observed_server_environment_20260920:
+  scope: CPU tests and CLI/config verification only; not a fresh-machine GPU certification
+  python: 3.11.14
+  pytorch: 2.6.0
+  cuda: "12.4"
+  torchvision: 0.21.0
+  numpy: 1.26.4
+  diffusers: 0.36.0
+  transformers: 4.55.2
+  sapien: 3.0.1
+  accelerate: 1.14.0
+  lingbot_va_dirty: true
+  robotwin_commit: 2eeec322d95799f537cbfe5f291a8220d965ccb8
+  wave_rl_contains_external_sources: false

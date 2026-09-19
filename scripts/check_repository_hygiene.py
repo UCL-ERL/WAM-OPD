@@ -37,12 +37,17 @@ def tracked_files(root: Path) -> list[Path]:
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
     failures: list[str] = []
-    for path in tracked_files(root):
+    paths = tracked_files(root)
+    for path in paths:
         relative = path.relative_to(root)
         if path.suffix.lower() in ARTIFACT_SUFFIXES:
             failures.append(f"tracked model/video artifact: {relative}")
             continue
         if not path.is_file():
+            continue
+        # This file defines the forbidden strings; it is not a runtime config.
+        # Keep the exemption exact so all other scripts remain checked.
+        if path.resolve() == Path(__file__).resolve():
             continue
         try:
             text = path.read_text(encoding="utf-8")
@@ -56,7 +61,7 @@ def main() -> int:
         print("Repository hygiene check failed:")
         print("\n".join(f"- {failure}" for failure in failures))
         return 1
-    print(f"Repository hygiene check passed ({len(tracked_files(root))} tracked files).")
+    print(f"Repository hygiene check passed ({len(paths)} tracked files).")
     return 0
 
 
