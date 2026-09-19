@@ -586,8 +586,8 @@ def main() -> int:
         config.get(
             "project_root",
             os.environ.get(
-                "WAVE_RL_ROOT",
-                os.environ.get("PROJECT_ROOT", workspace_root.parent / "wave-rl"),
+                "WAM_OPD_RUNTIME_ROOT",
+                os.environ.get("WAVE_RL_ROOT", os.environ.get("PROJECT_ROOT", workspace_root)),
             ),
         )
     ).expanduser().resolve()

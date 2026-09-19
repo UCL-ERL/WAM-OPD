@@ -5,9 +5,11 @@ from pathlib import Path
 import subprocess
 import sys
 
+import pytest
+
 
 def test_bootstrap_reports_missing_external_trees(tmp_path):
-    # Simulate the pinned wave-rl tree: third_party contains only a placeholder.
+    # Simulate successful Git commands that leave incomplete source trees.
     binary = tmp_path / "bin"
     binary.mkdir()
     git = binary / "git"
@@ -22,10 +24,30 @@ def test_bootstrap_reports_missing_external_trees(tmp_path):
     result = subprocess.run(
         ["bash", str(root / "scripts/bootstrap_dependencies.sh")],
         env={**os.environ, "PATH": str(binary) + os.pathsep + os.environ["PATH"],
-             "WAVE_RL_ROOT": str(tmp_path / "wave")},
+             "WAM_OPD_RUNTIME_ROOT": str(tmp_path / "wam-runtime")},
         capture_output=True, text=True,
     )
     assert result.returncode == 2, result.stdout + result.stderr
     assert "INCOMPLETE" in result.stderr
     assert "lingbot-va" in result.stderr
     assert "RoboTwin-lingbot-native" in result.stderr
+
+
+@pytest.mark.parametrize("source", ["lingbot-va", "RoboTwin-lingbot-native"])
+def test_bootstrap_preserves_existing_sources(tmp_path, source):
+    existing = tmp_path / "third_party" / source
+    existing.mkdir(parents=True)
+    marker = existing / "local-patch.txt"
+    marker.write_text("keep this source patch")
+    root = Path(__file__).resolve().parents[1]
+    result = subprocess.run(
+        ["bash", str(root / "scripts/bootstrap_dependencies.sh")],
+        env={**os.environ, "WAM_OPD_RUNTIME_ROOT": str(tmp_path)},
+        capture_output=True, text=True,
+    )
+    assert result.returncode == 2
+    assert "refusing to overwrite" in result.stderr
+    assert marker.read_text() == "keep this source patch"
+    assert not (tmp_path / "third_party" / (
+        "RoboTwin-lingbot-native" if source == "lingbot-va" else "lingbot-va"
+    )).exists()

@@ -1,11 +1,12 @@
 source_repositories:
-  wave_rl:
-    url: https://github.com/ylhaichen/wave-rl.git
-    commit: d7aeed296ef1daa98cfda0108fd3475946226971
   lingbot_va:
     url: https://github.com/robbyant/lingbot-va.git
-    location: wave-rl/third_party/lingbot-va
+    location: third_party/lingbot-va
     commit: 58c2ae5bac46bd8114065bea9d7d256eb67c16c3
+  robotwin:
+    url: https://github.com/RoboTwin-Platform/RoboTwin.git
+    location: third_party/RoboTwin-lingbot-native
+    commit: 2eeec322d95799f537cbfe5f291a8220d965ccb8
   flash_wam_reference:
     url: https://github.com/NU-World-Model-Embodied-AI/Flash-WAM.git
     commit: 5b8df13e9db24fb15ce42ff5ccc60a4015195960
@@ -33,4 +34,3 @@ observed_server_environment_20260920:
   accelerate: 1.14.0
   lingbot_va_dirty: true
   robotwin_commit: 2eeec322d95799f537cbfe5f291a8220d965ccb8
-  wave_rl_contains_external_sources: false

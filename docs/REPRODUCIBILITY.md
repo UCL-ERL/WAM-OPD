@@ -75,11 +75,11 @@ configuration to pass.
 
 ### Important dependency gaps
 
-1. The pinned `wave-rl` commit `d7aeed296ef1daa98cfda0108fd3475946226971`
-   contains only `third_party/.gitkeep`. Its dependency lock has null
-   repository entries. `git submodule update` therefore does **not** install
-   LingBot-VA, RoboTwin or RLinf. The bootstrap helper now reports INCOMPLETE
-   for this situation. A successful source clone is not runtime installation.
+1. The bootstrap helper now downloads pinned LingBot-VA and RoboTwin sources
+   directly into WAM-OPD's `third_party/`. This replaces the former incomplete
+   workspace scaffold. It is a source download, not a Python/CUDA environment,
+   model-weight or simulator-asset installer. All of those remain separate
+   prerequisites until an independent GPU smoke test passes.
 2. The observed server LingBot-VA tree is based on commit
    `58c2ae5bac46bd8114065bea9d7d256eb67c16c3`, but has local edits in
    `wan_va/modules/model.py`, `wan_va/wan_va_server.py`,
@@ -96,6 +96,33 @@ configuration to pass.
 5. Downloadable reproduction inputs (task metadata, qualified decisions,
    selected adapters and frozen 60-pair panels) have not been packaged into a
    documented public artifact release. They are not produced by `pip install`.
+6. `prototype_real_obs_action_teacher_bridge.py` is a historical diagnostic
+   with a direct `wave_rl` wrapper import; several additional server-only
+   historical diagnostics have similar imports. They have not been certified
+   in the independent environment. Do not install that framework to work
+   around this release gap: migrate and parity-test the required wrapper seam
+   before advertising these diagnostics as standalone. Existing artifact
+   provenance strings and explicit legacy environment settings are retained
+   for compatibility, not as new-user installation requirements.
+
+### Independent environment layout
+
+`WAM_OPD_RUNTIME_ROOT` defaults to this repository and takes precedence over
+legacy explicitly configured roots. Existing manifest `project_root` fields
+remain readable. New manifests point to the WAM-OPD runtime root. The Python
+default is the active interpreter; interpreter symlinks are not resolved, so a
+venv remains a venv in child processes. `WAM_OPD_PYTHON_BIN` overrides it.
+
+```text
+WAM-OPD/
+  .venv/                         independent Python environment
+  third_party/lingbot-va/         pinned model runtime source
+  third_party/RoboTwin-lingbot-native/  pinned simulator source + separate assets
+```
+
+The bootstrap refuses existing source directories rather than overwriting
+them. Existing server directories, source patches, environments, running jobs
+and historical manifests are not changed by this migration.
 
 ## Correct scaled-pipeline commands
 

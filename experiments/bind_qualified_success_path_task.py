@@ -25,13 +25,13 @@ from experiments.paths import (
     SOURCE_SWEEP,
     STUDENT_ROOT,
     TEACHER_ROOT,
-    WAVE_RL_ROOT,
+    RUNTIME_ROOT,
 )
 from experiments.stage_h_task_progress import SUPPORTED_TASKS
 
 
 WORKSPACE = REPO_ROOT
-PROJECT_ROOT = WAVE_RL_ROOT
+PROJECT_ROOT = RUNTIME_ROOT
 STUDENT = STUDENT_ROOT
 TEACHER = TEACHER_ROOT
 SPLITS = {

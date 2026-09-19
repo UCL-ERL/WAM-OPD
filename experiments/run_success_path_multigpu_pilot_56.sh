@@ -17,9 +17,9 @@ fi
 
 cd "$repo_root"
 mkdir -p "$pilot_root"
-wave_rl_root="${WAVE_RL_ROOT:-${repo_root}/../wave-rl}"
-export PYTHONPATH="${repo_root}:${wave_rl_root}/src:${wave_rl_root}:${wave_rl_root}/third_party/lingbot-va:${wave_rl_root}/third_party/RoboTwin-lingbot-native${PYTHONPATH:+:${PYTHONPATH}}"
-export ROBOTWIN_ROOT="${ROBOTWIN_ROOT:-${wave_rl_root}/third_party/RoboTwin-lingbot-native}"
+runtime_root="${WAM_OPD_RUNTIME_ROOT:-${WAVE_RL_ROOT:-${PROJECT_ROOT:-$repo_root}}}"
+export PYTHONPATH="${repo_root}:${runtime_root}/third_party/lingbot-va:${runtime_root}/third_party/RoboTwin-lingbot-native${PYTHONPATH:+:${PYTHONPATH}}"
+export ROBOTWIN_ROOT="${ROBOTWIN_ROOT:-${runtime_root}/third_party/RoboTwin-lingbot-native}"
 export PYTHONUNBUFFERED=1
 
 if [[ ! -f "$pilot_root/single/result.json" ]]; then

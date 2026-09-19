@@ -11,7 +11,7 @@ script does not step the simulator or train either model.
 
 One-command run
 ---------------
-CUDA_VISIBLE_DEVICES=0 WAVE_RL_ROOT=/path/to/wave-rl \
+CUDA_VISIBLE_DEVICES=0 WAM_OPD_RUNTIME_ROOT=/path/to/WAM-OPD \
   /path/to/lingbot-python \
   experiments/prototype_real_obs_action_teacher_bridge.py
 """
@@ -31,8 +31,8 @@ from einops import rearrange
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = Path(
     os.environ.get(
-        "WAVE_RL_ROOT",
-        os.environ.get("PROJECT_ROOT", str(WORKSPACE_ROOT.parent / "wave-rl")),
+        "WAM_OPD_RUNTIME_ROOT",
+        os.environ.get("WAVE_RL_ROOT", os.environ.get("PROJECT_ROOT", str(WORKSPACE_ROOT))),
     )
 ).expanduser().resolve()
 for path in (

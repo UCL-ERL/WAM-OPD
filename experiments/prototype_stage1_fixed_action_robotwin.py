@@ -27,9 +27,9 @@ import yaml
 
 DEFAULT_PROJECT_ROOT = Path(
     os.environ.get(
-        "WAVE_RL_ROOT",
+        "WAM_OPD_RUNTIME_ROOT",
         os.environ.get(
-            "PROJECT_ROOT", str(Path(__file__).resolve().parents[2] / "wave-rl")
+            "WAVE_RL_ROOT", os.environ.get("PROJECT_ROOT", str(Path(__file__).resolve().parents[1]))
         ),
     )
 ).expanduser().resolve()

@@ -379,8 +379,8 @@ def _stage_m_teacher_query_lock(path: str | None):
 WORKSPACE_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = Path(
     os.environ.get(
-        "WAVE_RL_ROOT",
-        os.environ.get("PROJECT_ROOT", str(WORKSPACE_ROOT.parent / "wave-rl")),
+        "WAM_OPD_RUNTIME_ROOT",
+        os.environ.get("WAVE_RL_ROOT", os.environ.get("PROJECT_ROOT", str(WORKSPACE_ROOT))),
     )
 ).expanduser().resolve()
 UPSTREAM = (

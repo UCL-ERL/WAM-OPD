@@ -24,10 +24,10 @@ if [[ ! -f "$pair_manifest" ]]; then
 fi
 
 workspace="${WAM_OPD_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-project="${WAVE_RL_ROOT:-${PROJECT_ROOT:-$workspace/../wave-rl}}"
+project="${WAM_OPD_RUNTIME_ROOT:-${WAVE_RL_ROOT:-${PROJECT_ROOT:-$workspace}}}"
 lingbot_root="$project/third_party/lingbot-va"
 robotwin_root="$project/third_party/RoboTwin-lingbot-native"
-client_python="${WAM_OPD_PYTHON_BIN:-$project/third_party/RLinf/.venv-robotwin/bin/python}"
+client_python="${WAM_OPD_PYTHON_BIN:-python3}"
 client="$workspace/experiments/prototype_fixed_instruction_robotwin_client_diag.py"
 run_name="$(basename "$output_root")"
 scratch_base="${WAM_OPD_SCRATCH_ROOT:-$workspace/.artifacts/scratch}"

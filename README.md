@@ -102,8 +102,10 @@ identify their intended status instead of deleting them speculatively.
 
 ## Installation
 
-The runtime expects a sibling or explicitly configured `wave-rl` checkout that
-provides LingBot-VA, RoboTwin, and the pinned RoboTwin environment.
+Use an independent WAM-OPD Python environment. Its direct model/simulator
+sources live under `third_party/lingbot-va` and
+`third_party/RoboTwin-lingbot-native`; no surrounding research workspace is
+required by the default installation layout.
 
 ```bash
 git clone https://github.com/UCL-ERL/WAM-OPD.git
@@ -116,16 +118,17 @@ python -m pip install '.[dev]'
 make test
 ```
 
-For GPU experiments, use a separately prepared RoboTwin/LingBot environment.
-The current `bootstrap_dependencies.sh` clones a workspace scaffold, **not** a
-complete runtime. It now reports missing external source trees instead of
-claiming installation succeeded. See [Reproducibility](docs/REPRODUCIBILITY.md)
-for the missing release inputs and observed server environment.
+For GPU experiments, prepare a WAM-OPD environment with CUDA, LingBot-VA and
+RoboTwin dependencies. The helper below downloads the pinned upstream source
+trees directly. It does **not** install Python/CUDA packages, model weights or
+simulator assets, nor does it apply the server's unpublished upstream patches.
+See [Reproducibility](docs/REPRODUCIBILITY.md) for the remaining release gates.
 
 ```bash
-
+bash scripts/bootstrap_dependencies.sh
 cp .env.example .env
-# Set WAVE_RL_ROOT, WAM_OPD_PYTHON_BIN, model roots, and artifact roots.
+# Set WAM_OPD_RUNTIME_ROOT to this checkout, WAM_OPD_PYTHON_BIN to its
+# .venv/bin/python, and configure the model and artifact roots.
 set -a
 source .env
 set +a
@@ -135,7 +138,7 @@ The full pipeline needs these external inputs:
 
 1. released `FlashWAM-RoboTwin` Student;
 2. the official `lingbot-va-posttrain-robotwin` Teacher Transformer;
-3. RoboTwin native source and assets through `wave-rl`;
+3. RoboTwin native source and assets, with LingBot-VA source;
 4. a qualified task decision and outcome-free episode metadata;
 5. writable artifact and scratch roots outside this repository.
 
