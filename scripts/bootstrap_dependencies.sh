@@ -14,12 +14,29 @@ for target in "$lingbot_root" "$robotwin_root"; do
 done
 
 mkdir -p "$runtime_root/third_party"
-git clone https://github.com/robbyant/lingbot-va.git "$lingbot_root"
-git -C "$lingbot_root" checkout --detach 58c2ae5bac46bd8114065bea9d7d256eb67c16c3
-git -C "$lingbot_root" submodule update --init --recursive
-git clone https://github.com/RoboTwin-Platform/RoboTwin.git "$robotwin_root"
-git -C "$robotwin_root" checkout --detach 2eeec322d95799f537cbfe5f291a8220d965ccb8
-git -C "$robotwin_root" submodule update --init --recursive
+clone_pinned() {
+  local url="$1"
+  local target="$2"
+  local commit="$3"
+  local attempt
+  for attempt in 1 2 3; do
+    rm -rf "$target"
+    if GIT_TERMINAL_PROMPT=0 git -c http.version=HTTP/1.1 clone --filter=blob:none --no-checkout "$url" "$target" \
+      && git -C "$target" fetch --depth=1 origin "$commit" \
+      && git -C "$target" checkout --detach "$commit" \
+      && git -C "$target" submodule update --init --recursive; then
+      return 0
+    fi
+    echo "source fetch failed (attempt $attempt/3): $url" >&2
+  done
+  echo "unable to fetch pinned source after three attempts: $url" >&2
+  return 2
+}
+
+clone_pinned https://github.com/robbyant/lingbot-va.git "$lingbot_root" \
+  58c2ae5bac46bd8114065bea9d7d256eb67c16c3
+clone_pinned https://github.com/RoboTwin-Platform/RoboTwin.git "$robotwin_root" \
+  2eeec322d95799f537cbfe5f291a8220d965ccb8
 
 missing=0
 for required in third_party/lingbot-va/wan_va/wan_va_server.py third_party/RoboTwin-lingbot-native/envs; do
