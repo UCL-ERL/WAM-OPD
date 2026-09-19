@@ -34,6 +34,35 @@ included in `make test`.
 
 ## Start here: CPU development
 
+### September 20 follow-up: independent runtime defaults
+
+Verified source: commit `7662c76`, cloned with `git clone --no-local` into a
+new directory. The dirty developer trainer was **not** included.
+
+| Verification layer | Command / result |
+| --- | --- |
+| Fresh Python 3.11 venv and wheel install | `python -m pip install '<clean-checkout>[dev]'`: PASS, NumPy 2.4.6 / pytest 8.4.2 |
+| Lightweight repository gates | `make test`: **52 passed**, compile and hygiene PASS |
+| Broader CPU suite from clean checkout | With the separate Torch 2.6.0 test environment: `CUDA_VISIBLE_DEVICES='' python -m pytest -q experiments tests -rs`: **253 passed, 1 skipped** |
+| Skip | Native closed-loop test requires the external LingBot-VA runtime |
+| Direct upstream source bootstrap | Initial GitHub request failed with `Empty reply from server`; retry of `bash scripts/bootstrap_dependencies.sh` with a fresh isolated runtime root: PASS |
+| Downloaded revisions | LingBot-VA `58c2ae5bac46bd8114065bea9d7d256eb67c16c3`; RoboTwin `2eeec322d95799f537cbfe5f291a8220d965ccb8` |
+| Shell parsing and diff integrity | `bash -n` on the three changed launch/bootstrap scripts; `git diff --check`: PASS |
+| GPU / real model / simulator execution | **Not tested by this follow-up**; release remains HOLD |
+
+Operation receipt (finding S1 — runtime ownership): the retired requirement is
+a sibling research-workspace checkout and a Python interpreter inside another
+framework's directory. Runtime defaults, source bootstrap, manifest binder,
+launcher fallbacks, `.env.example`, dependency pins and installation docs now
+use WAM-OPD-owned paths. Explicit legacy environment settings and persisted
+`project_root` remain compatible. Tests cover path precedence, active-venv
+interpreter identity, missing source detection and refusal to overwrite either
+existing source tree. No loss, checkpoint format, artifact, server source or
+running process was changed. The unrelated local trainer edits remain
+uncommitted. Reverting `7662c76` restores the source-only boundary change; no
+data migration is needed. Retained historical wrapper dependencies and the
+other release gaps below prevent a full standalone-runtime claim.
+
 Use Python 3.10–3.12; Python 3.11 is the version used for the fresh-environment
 check. No checkpoints or GPUs are required:
 
