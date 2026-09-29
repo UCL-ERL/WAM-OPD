@@ -90,6 +90,10 @@ def validate_contract(manifest_path: Path) -> dict[str, Any]:
     if len(set(seeds)) != len(seeds):
         raise ValueError("split seeds must be unique")
     base._equal(split.get("accepted_seed_list"), seeds, "split.accepted_seed_list")
+    split_sha = base._sha256(split_path)
+    metadata_sha = str(split.get("ordered_metadata_projection_sha256", ""))
+    if not metadata_sha:
+        raise ValueError("split lacks ordered_metadata_projection_sha256")
 
     formal_root = base._ssd_path(manifest.get("formal_root"), "formal_root")
     collection_root = base._ssd_path(manifest.get("collection_root"), "collection_root")
@@ -103,6 +107,13 @@ def validate_contract(manifest_path: Path) -> dict[str, Any]:
     base._equal(training.get("inner_epochs"), 3, "training.inner_epochs")
     base._equal(training.get("run_mode"), "trajectory_update", "training.run_mode")
     base._equal(Path(str(training.get("output_dir"))).resolve(), formal_root / "update", "training.output_dir")
+    base._validate_binding(
+        training,
+        split_path=split_path,
+        split_sha=split_sha,
+        metadata_sha=metadata_sha,
+        label="training",
+    )
     base._validate_recipe(
         training,
         task=task,
@@ -130,6 +141,13 @@ def validate_contract(manifest_path: Path) -> dict[str, Any]:
     collected: list[dict[str, Any]] = []
     for shard, path in enumerate(configs):
         config = base._read_json(path)
+        base._validate_binding(
+            config,
+            split_path=split_path,
+            split_sha=split_sha,
+            metadata_sha=metadata_sha,
+            label=f"collection[{shard}]",
+        )
         expected = [
             base._rollout(normalized_records[index])
             for index in range(shard, collection_count, len(configs))
@@ -146,6 +164,13 @@ def validate_contract(manifest_path: Path) -> dict[str, Any]:
     base._equal(protocol.get("task"), task, "protocol.task")
     base._equal(protocol.get("split_counts"), counts, "protocol.split_counts")
     base._equal(protocol.get("split_indices"), split_indices, "protocol.split_indices")
+    base._validate_binding(
+        protocol,
+        split_path=split_path,
+        split_sha=split_sha,
+        metadata_sha=metadata_sha,
+        label="protocol",
+    )
     base._equal(protocol.get("epoch_ids"), [1, 2, 3], "protocol.epoch_ids")
     base._equal(protocol.get("selection_rule"), base.SELECTION_RULE, "protocol.selection_rule")
     screen_start, screen_end = split_indices["screening"]
@@ -331,6 +356,21 @@ def _run_stage(manifest: Mapping[str, Any], stage: str) -> dict[str, Any]:
         if not decision_path.is_file():
             raise FileNotFoundError("collection concurrency canary decision is missing")
         decision = base._read_json(decision_path)
+        if decision.get("schema") != "waopd_collection_concurrency_canary_v1":
+            raise RuntimeError("collection canary decision has an unexpected schema")
+        # A FAILED canary means even one worker per GPU could not collect; the
+        # formal collection would almost certainly fail the same way and then
+        # leave partial output that the pipeline refuses to rerun.  Block it.
+        if decision.get("status") == "FAIL":
+            raise RuntimeError(
+                "collection concurrency canary FAILED; refusing to launch "
+                "formal collection. See failures in the canary decision."
+            )
+        if decision.get("status") not in ("PASS", "FALLBACK"):
+            raise RuntimeError(
+                f"collection canary decision has unexpected status: "
+                f"{decision.get('status')!r}"
+            )
         workers = int(decision["selected_workers_per_gpu"])
         failures = _launch_configs(
             manifest,

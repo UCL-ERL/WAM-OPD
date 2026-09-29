@@ -119,5 +119,178 @@ class ScaledQualifiedSuccessPathTest(unittest.TestCase):
             self.assertEqual(_eligible_gpus(manifest, "update"), [4])
 
 
+class ScaledCanaryGateTest(unittest.TestCase):
+    """The formal collection stage must refuse a FAILED concurrency canary."""
+
+    def _manifest(self, canary_root: Path) -> dict[str, object]:
+        return {
+            "canary_root": str(canary_root),
+            "formal_root": "/ssd/data/formal",
+            "collection_configs": ["/ssd/data/cfg.json"],
+            "gpu_policy": {
+                "stable_gpu_count": 2,
+                "allowed_gpu_ids": [4, 7],
+                "min_free_mib": {
+                    "collection": 70000,
+                    "update": 70000,
+                    "evaluation": 45000,
+                },
+            },
+        }
+
+    def _write_decision(self, root: Path, *, status: str, workers: int) -> Path:
+        root.mkdir(parents=True, exist_ok=True)
+        decision = root / "decision.json"
+        decision.write_text(
+            json.dumps(
+                {
+                    "schema": "waopd_collection_concurrency_canary_v1",
+                    "status": status,
+                    "selected_workers_per_gpu": workers,
+                    "failures": [],
+                }
+            )
+        )
+        return decision
+
+    def test_failed_canary_blocks_formal_collection(self) -> None:
+        from experiments.run_scaled_qualified_success_path_pipeline import _run_stage
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_decision(root, status="FAIL", workers=1)
+            with self.assertRaisesRegex(RuntimeError, "canary FAILED"):
+                with mock.patch(
+                    "experiments.run_scaled_qualified_success_path_pipeline._launch_configs",
+                    return_value=[],
+                ):
+                    _run_stage(self._manifest(root), "collection")
+
+    def test_fallback_canary_still_allows_formal_collection(self) -> None:
+        from experiments.run_scaled_qualified_success_path_pipeline import _run_stage
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_decision(root, status="FALLBACK", workers=1)
+            with mock.patch(
+                "experiments.run_scaled_qualified_success_path_pipeline._launch_configs",
+                return_value=[],
+            ):
+                result = _run_stage(self._manifest(root), "collection")
+            self.assertEqual(result["workers_per_gpu"], 1)
+
+    def test_pass_canary_uses_selected_worker_count(self) -> None:
+        from experiments.run_scaled_qualified_success_path_pipeline import _run_stage
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_decision(root, status="PASS", workers=2)
+            with mock.patch(
+                "experiments.run_scaled_qualified_success_path_pipeline._launch_configs",
+                return_value=[],
+            ):
+                result = _run_stage(self._manifest(root), "collection")
+            self.assertEqual(result["workers_per_gpu"], 2)
+
+    def test_missing_canary_decision_is_rejected(self) -> None:
+        from experiments.run_scaled_qualified_success_path_pipeline import _run_stage
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(FileNotFoundError):
+                _run_stage(self._manifest(Path(tmp)), "collection")
+
+    def test_unknown_canary_status_is_rejected(self) -> None:
+        from experiments.run_scaled_qualified_success_path_pipeline import _run_stage
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_decision(root, status="BOGUS", workers=1)
+            with self.assertRaisesRegex(RuntimeError, "unexpected status"):
+                with mock.patch(
+                    "experiments.run_scaled_qualified_success_path_pipeline._launch_configs",
+                    return_value=[],
+                ):
+                    _run_stage(self._manifest(root), "collection")
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+class ScaledBindingValidationTest(unittest.TestCase):
+    """The scaled validator must bind configs to the shipped split hashes."""
+
+    def test_training_config_missing_split_binding_is_rejected(self) -> None:
+        from experiments import run_qualified_success_path_pipeline as base
+
+        with tempfile.TemporaryDirectory() as tmp:
+            split_path = Path(tmp).resolve() / "split.json"
+            split_path.write_text(
+                json.dumps(
+                    {
+                        "task": "place_a2b_left",
+                        "binding_status": "BOUND",
+                        "split_counts": {
+                            "train": 24,
+                            "calibration": 12,
+                            "screening": 4,
+                            "heldout": 6,
+                        },
+                        "split_indices": {
+                            "train": [0, 24],
+                            "calibration": [24, 36],
+                            "screening": [36, 40],
+                            "heldout": [40, 46],
+                        },
+                        "accepted_seed_list": list(range(46)),
+                        "ordered_metadata_projection_sha256": "abc",
+                        "episode_records": [
+                            {
+                                "episode": index,
+                                "seed": index,
+                                "instruction": f"inst {index}",
+                                "role": "train",
+                            }
+                            for index in range(46)
+                        ],
+                    }
+                )
+            )
+            training = {
+                # No source_binding_status / split_manifest_sha256 at all.
+                "rollouts": [],
+            }
+            with self.assertRaises(ValueError):
+                base._validate_binding(
+                    training,
+                    split_path=split_path,
+                    split_sha=base._sha256(split_path),
+                    metadata_sha="abc",
+                    label="training",
+                )
+
+    def test_training_config_wrong_split_sha_is_rejected(self) -> None:
+        from experiments import run_qualified_success_path_pipeline as base
+
+        with tempfile.TemporaryDirectory() as tmp:
+            split_path = Path(tmp).resolve() / "split.json"
+            split_path.write_text(json.dumps({"task": "x"}), encoding="utf-8")
+            training = {
+                "source_binding_status": "BOUND",
+                "split_manifest": str(split_path),
+                "split_manifest_sha256": "deadbeef",
+                "split_indices": {"train": [0, 1]},
+                "ordered_metadata_projection_sha256": "abc",
+            }
+            with self.assertRaisesRegex(ValueError, "split_manifest_sha256"):
+                base._validate_binding(
+                    training,
+                    split_path=split_path,
+                    split_sha=base._sha256(split_path),
+                    metadata_sha="abc",
+                    label="training",
+                )
+
+
 if __name__ == "__main__":
     unittest.main()
