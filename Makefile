@@ -20,7 +20,8 @@ test: compile hygiene
 		tests/test_opd_task_specs.py \
 		experiments/test_qualified_success_path_pipeline.py \
 		experiments/test_scaled_qualified_success_path_pipeline.py \
-		experiments/test_stage_h_task_progress.py
+		experiments/test_stage_h_task_progress.py \
+		experiments/test_eval_atomic_write.py
 
 test-runtime:
 	$(PYTHON) -m pytest -q \
