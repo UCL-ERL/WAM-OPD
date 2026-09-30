@@ -14,9 +14,6 @@ import json
 from pathlib import Path
 from typing import Any, Iterable
 
-import torch
-
-
 SCHEMA = "flashwam_stage_g_candidate_manifest_v2"
 TEACHER_TARGET = "teacher_bridge_pathwise_macro_endpoint"
 RETENTION_TARGET = "released_student_endpoint"
@@ -40,6 +37,10 @@ def file_sha256(path: str | Path) -> str:
 
 
 def tensor_sha256(tensor: torch.Tensor) -> str:
+    # torch is imported lazily so the file-hashing contract below can be
+    # exercised in torch-free unit-test environments (see test_stage_g_*).
+    import torch
+
     value = tensor.detach().cpu().contiguous()
     raw = value.view(torch.uint8).numpy().tobytes()
     return _sha256_parts(
@@ -56,9 +57,9 @@ def build_policy_version(
     policy_delta: str | Path | None = None,
 ) -> str:
     base = Path(base_checkpoint).resolve()
-    if not base.exists():
+    if not base.is_file():
         raise FileNotFoundError(base)
-    base_identity = _sha256_parts((str(base).encode("utf-8"),))[:16]
+    base_identity = file_sha256(base)[:16]
     if policy_delta is None:
         return f"released-{base_identity}"
     delta = Path(policy_delta).resolve()
@@ -101,12 +102,15 @@ def build_label_key(
     action_base_noise: torch.Tensor,
     teacher_transformer: str | Path,
 ) -> str:
+    teacher = Path(teacher_transformer).resolve()
+    if not teacher.is_file():
+        raise FileNotFoundError(teacher)
     digest = _sha256_parts(
         (
             str(state_key).encode("ascii"),
             str(policy_version).encode("ascii"),
             tensor_sha256(action_base_noise).encode("ascii"),
-            str(Path(teacher_transformer).resolve()).encode("utf-8"),
+            file_sha256(teacher).encode("ascii"),
             TEACHER_TARGET.encode("ascii"),
         )
     )
