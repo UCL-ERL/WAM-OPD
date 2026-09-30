@@ -61,7 +61,9 @@ def progress_scalar(task_name: str, progress: Mapping[str, object]) -> float | N
 
     Tasks without a validated continuous statistic deliberately return None;
     their stall trigger therefore depends on unchanged ordinal stage plus fresh
-    planner failures.
+    planner failures.  Unsupported tasks also return None instead of raising,
+    so an arbitrary task wired into the Stage-O recorder can always fall back
+    to ordinal/planner-only stall detection instead of crashing the rollout.
     """
 
     _ordinal(progress)
@@ -75,7 +77,9 @@ def progress_scalar(task_name: str, progress: Mapping[str, object]) -> float | N
         return -_finite_float(progress["xy_linf_error"], "xy_linf_error")
     if task_name in {"click_bell", "blocks_ranking_size"}:
         return None
-    raise ValueError(f"unsupported task for Stage-O progress: {task_name}")
+    # No validated continuous statistic for this task.  Falling back to
+    # None keeps ordinal/planner-only stall detection available.
+    return None
 
 
 def observable_change_metrics(
@@ -218,7 +222,11 @@ class EventDetector:
             return None
         else:
             scalar_delta = float(scalars[-1]) - float(scalars[0])
-            if scalar_delta > self.config.continuous_epsilon:
+            # Stalled means the continuous statistic is flat, not merely not
+            # increasing.  A strongly negative delta is a regression: the
+            # episode is still moving (in the wrong direction) and must not be
+            # mislabelled as a stall that would trigger a Teacher intervention.
+            if abs(scalar_delta) > self.config.continuous_epsilon:
                 return None
 
         return self._emit(
