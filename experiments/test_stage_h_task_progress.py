@@ -770,3 +770,62 @@ class StageHTaskProgressTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ObservationHashContractTest(unittest.TestCase):
+    """Exact-observation SHA must be unambiguous across producers."""
+
+    def test_python_and_numpy_scalars_hash_identically(self) -> None:
+        from experiments.stage_h_context_contract import (
+            formatted_observation_sha256,
+        )
+
+        python = formatted_observation_sha256(
+            {"x": 1.5, "y": 3, "z": True, "w": "hello"}
+        )
+        numpy = formatted_observation_sha256(
+            {
+                "x": np.float32(1.5),
+                "y": np.int64(3),
+                "z": np.bool_(True),
+                "w": "hello",
+            }
+        )
+        self.assertEqual(python, numpy)
+
+    def test_array_representation_metadata_is_retained(self) -> None:
+        from experiments.stage_h_context_contract import (
+            formatted_observation_sha256,
+        )
+
+        f32 = formatted_observation_sha256(
+            {"im": np.zeros((2, 2), dtype=np.float32)}
+        )
+        f64 = formatted_observation_sha256(
+            {"im": np.zeros((2, 2), dtype=np.float64)}
+        )
+        self.assertNotEqual(f32, f64)
+
+    def test_string_and_numeric_streams_are_framed_apart(self) -> None:
+        from experiments.stage_h_context_contract import (
+            formatted_observation_sha256,
+        )
+
+        # 'x' is 0x78 == 120, so an unframed digest could collide.
+        self.assertNotEqual(
+            formatted_observation_sha256({"a": "x"}),
+            formatted_observation_sha256({"a": 120}),
+        )
+
+    def test_key_boundaries_are_unambiguous(self) -> None:
+        from experiments.stage_h_context_contract import (
+            formatted_observation_sha256,
+        )
+
+        one_key = formatted_observation_sha256({"ab": [1]})
+        split_keys = formatted_observation_sha256({"a": [1], "b": []})
+        self.assertNotEqual(one_key, split_keys)
+
+
+if __name__ == "__main__":
+    unittest.main()
