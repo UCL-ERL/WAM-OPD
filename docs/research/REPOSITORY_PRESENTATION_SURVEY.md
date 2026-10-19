@@ -66,3 +66,21 @@ mark, and documentation navigation. It should not change Python module paths,
 training/evaluation contracts, generated-artifact rules, or claims about
 benchmark reproducibility. Validation should include `git diff --check`, the
 existing `make test`, and `wam-opd doctor`.
+
+## Follow-up: paper-linked homepage (2026-10-19)
+
+Revisited [LingBot-VA](https://github.com/robbyant/lingbot-va),
+[SimpleVLA-RL](https://github.com/PRIME-RL/SimpleVLA-RL) and
+[openpi](https://github.com/Physical-Intelligence/openpi). The first two make
+paper/method identity and media visible before detailed setup; openpi uses
+clear requirements and installation entry points. The WAM-OPD update combines
+these patterns with the existing installation and protocol documentation.
+
+- Use the title, author order and BibTeX from
+  [arXiv:2608.22364v2](https://arxiv.org/abs/2608.22364v2).
+- Put paper/PDF links, the published overview and a two-row result summary
+  ahead of engineering detail. Keep real-robot frames as evidence with alt text.
+- Report paper results separately from the scope of repository release checks.
+- Add `CITATION.cff` and `paper.bib`; record figure attribution and licensing.
+- Keep installation commands and stable module paths intact, with the source
+  synchronization and repository map in a disclosure.
