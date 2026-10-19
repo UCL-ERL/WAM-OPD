@@ -19,6 +19,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 from typing import Any, Mapping, Sequence
 
 
@@ -385,11 +386,27 @@ def _read_json(path: Path) -> dict[str, Any]:
 
 
 def _write_json(path: Path, value: object) -> None:
+    """Atomically publish a JSON receipt.
+
+    A plain write_text leaves a truncated file if the process is killed
+    mid-write.  The pipeline's ``_phase_status`` treats an unreadable or
+    non-PASS receipt as "started but not done", which permanently blocks the
+    state machine.  Use a same-directory temp file, fsync, and atomic rename
+    so a reader never observes a partial payload.
+    """
+
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
+    fd, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            json.dump(value, handle, ensure_ascii=False, indent=2, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    except BaseException:
+        Path(temporary).unlink(missing_ok=True)
+        raise
 
 
 def _sha256(path: Path) -> str:
