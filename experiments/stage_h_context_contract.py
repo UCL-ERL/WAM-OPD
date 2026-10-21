@@ -9,15 +9,49 @@ from typing import Any
 import numpy as np
 
 
+def _len_prefix(payload: bytes) -> bytes:
+    """Return a fixed-width little-endian length prefix for ``payload``."""
+
+    return len(payload).to_bytes(8, "little")
+
+
 def _update_digest(digest: Any, key: str, value: Any) -> None:
+    """Fold one observation field into the digest without ambiguity.
+
+    Every part is written with an explicit type tag and a length prefix so
+    that different (key, value) combinations can never concatenate into the
+    same byte stream.  Scalar values (0-d arrays) are normalized to their
+    native Python scalar representation before hashing: a ``np.float32(1.5)``
+    and a Python ``1.5`` describe the same observation field and must hash
+    identically, otherwise two producers of a semantically equal observation
+    would disagree on the exact-observation SHA.
+    """
+
+    digest.update(b"k")
+    digest.update(_len_prefix(key.encode("utf-8")))
     digest.update(key.encode("utf-8"))
     if isinstance(value, str):
-        digest.update(b"str\0")
-        digest.update(value.encode("utf-8"))
+        digest.update(b"s")
+        payload = value.encode("utf-8")
+        digest.update(_len_prefix(payload))
+        digest.update(payload)
         return
-    array = np.ascontiguousarray(np.asarray(value))
+    array = np.asarray(value)
+    if array.ndim == 0:
+        # Normalize Python and numpy scalars to the same representation.
+        if np.issubdtype(array.dtype, np.integer):
+            array = np.asarray(int(array))
+        elif np.issubdtype(array.dtype, np.floating):
+            array = np.asarray(float(array))
+        elif array.dtype == np.bool_:
+            array = np.asarray(bool(array))
+    array = np.ascontiguousarray(array)
+    digest.update(b"a")
+    digest.update(_len_prefix(str(array.dtype).encode("ascii")))
     digest.update(str(array.dtype).encode("ascii"))
+    digest.update(_len_prefix(json.dumps(list(array.shape)).encode("ascii")))
     digest.update(json.dumps(list(array.shape)).encode("ascii"))
+    digest.update(_len_prefix(array.tobytes()))
     digest.update(array.tobytes())
 
 
